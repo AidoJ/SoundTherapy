@@ -101,7 +101,7 @@ const AdminPanel = ({ onLogout }) => {
     const { data, error } = await supabase
       .from('audio_files')
       .select('*')
-      .order('frequency_range_min', { ascending: true });
+      .order('frequency_min', { ascending: true });
 
     if (error) {
       console.error('Error fetching audio files:', error);
