@@ -1,0 +1,133 @@
+/**
+ * EmailJS Service for sending notifications
+ */
+
+import emailjs from '@emailjs/browser';
+
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const TEMPLATE_ID_CLIENT = import.meta.env.VITE_EMAILJS_TEMPLATE_CLIENT;
+const TEMPLATE_ID_PRACTITIONER = import.meta.env.VITE_EMAILJS_TEMPLATE_PRACTITIONER;
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+// Initialize EmailJS
+if (PUBLIC_KEY) {
+  emailjs.init(PUBLIC_KEY);
+}
+
+/**
+ * Send confirmation email to client
+ * @param {Object} clientData - Client information
+ * @param {Object} sessionData - Session information
+ * @param {number} suggestedFrequency - Recommended frequency
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendClientConfirmation = async (clientData, sessionData, suggestedFrequency) => {
+  if (!SERVICE_ID || !TEMPLATE_ID_CLIENT || !PUBLIC_KEY) {
+    console.warn('EmailJS not configured - skipping client email');
+    return { success: false, error: 'EmailJS not configured' };
+  }
+
+  try {
+    const templateParams = {
+      to_name: `${clientData.firstName} ${clientData.surname}`,
+      to_email: clientData.email,
+      session_date: sessionData.sessionDate,
+      session_time: sessionData.sessionTime,
+      suggested_frequency: suggestedFrequency,
+      frequency_name: sessionData.frequencyName || 'Healing Frequency',
+      reply_to: import.meta.env.VITE_PRACTITIONER_EMAIL || 'noreply@soundhealing.com'
+    };
+
+    const response = await emailjs.send(
+      SERVICE_ID,
+      TEMPLATE_ID_CLIENT,
+      templateParams
+    );
+
+    console.log('Client email sent successfully:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('Error sending client email:', error);
+    return { success: false, error: error.text || error.message };
+  }
+};
+
+/**
+ * Send notification to practitioner
+ * @param {Object} clientData - Client information
+ * @param {Object} sessionData - Session information
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendPractitionerNotification = async (clientData, sessionData) => {
+  if (!SERVICE_ID || !TEMPLATE_ID_PRACTITIONER || !PUBLIC_KEY) {
+    console.warn('EmailJS not configured - skipping practitioner email');
+    return { success: false, error: 'EmailJS not configured' };
+  }
+
+  const practitionerEmail = import.meta.env.VITE_PRACTITIONER_EMAIL;
+  if (!practitionerEmail) {
+    console.warn('Practitioner email not configured');
+    return { success: false, error: 'Practitioner email not set' };
+  }
+
+  try {
+    const templateParams = {
+      to_email: practitionerEmail,
+      client_name: `${clientData.firstName} ${clientData.surname}`,
+      client_email: clientData.email,
+      client_phone: clientData.phone,
+      session_date: sessionData.sessionDate,
+      session_time: sessionData.sessionTime,
+      intention: Array.isArray(sessionData.intention) ? sessionData.intention.join(', ') : sessionData.intention,
+      goal: sessionData.goalDescription || 'Not specified',
+      health_concerns: Array.isArray(sessionData.healthConcerns)
+        ? sessionData.healthConcerns.join(', ')
+        : 'None',
+      suggested_frequency: sessionData.frequencySuggested,
+      frequency_name: sessionData.frequencyName || 'Unknown'
+    };
+
+    const response = await emailjs.send(
+      SERVICE_ID,
+      TEMPLATE_ID_PRACTITIONER,
+      templateParams
+    );
+
+    console.log('Practitioner email sent successfully:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('Error sending practitioner email:', error);
+    return { success: false, error: error.text || error.message };
+  }
+};
+
+/**
+ * Log email send attempt to database
+ * @param {string} sessionId - Session UUID
+ * @param {string} emailType - 'client_confirmation' or 'practitioner_notification'
+ * @param {string} recipientEmail - Recipient email address
+ * @param {boolean} success - Whether email was sent successfully
+ * @param {string} errorMessage - Error message if failed
+ */
+export const logEmailSend = async (sessionId, emailType, recipientEmail, success, errorMessage = null) => {
+  try {
+    const { supabase } = await import('./supabaseClient');
+
+    const { error } = await supabase
+      .from('email_logs')
+      .insert([
+        {
+          session_id: sessionId,
+          email_type: emailType,
+          recipient_email: recipientEmail,
+          status: success ? 'sent' : 'failed',
+          error_message: errorMessage,
+          sent_at: success ? new Date().toISOString() : null
+        }
+      ]);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error logging email send:', error);
+  }
+};

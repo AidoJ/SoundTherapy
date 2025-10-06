@@ -1,0 +1,116 @@
+.welcome-screen {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.welcome-hero {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 30px;
+}
+
+.lotus-container {
+  margin-bottom: 30px;
+}
+
+.lotus {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 4px 12px rgba(155, 127, 196, 0.3));
+}
+
+.welcome-hero h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+  font-weight: 800;
+}
+
+.welcome-hero .subtitle {
+  font-size: clamp(16px, 3vw, 22px);
+  color: var(--muted);
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+
+.welcome-content {
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: left;
+  padding: 40px 30px;
+  background: var(--accent-bg);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+}
+
+.welcome-content h2 {
+  color: var(--primary);
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.welcome-content p {
+  color: var(--ink);
+  margin-bottom: 16px;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.welcome-content p:last-child {
+  margin-bottom: 0;
+}
+
+.btn-container {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 16px 32px;
+  border-radius: 12px;
+  border: none;
+  background: var(--gradient);
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 126, 140, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 126, 140, 0.4);
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (max-width: 768px) {
+  .welcome-hero {
+    padding: 40px 20px;
+  }
+
+  .welcome-content {
+    padding: 30px 20px;
+  }
+}
