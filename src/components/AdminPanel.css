@@ -421,6 +421,32 @@
   color: var(--muted);
 }
 
+.file-upload-section {
+  margin-bottom: 20px;
+}
+
+.file-upload-label {
+  display: inline-block;
+  padding: 16px 24px;
+  background: var(--gradient);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.file-upload-label:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 126, 140, 0.3);
+}
+
+.file-selected {
+  margin-top: 12px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .admin-tabs {
     flex-wrap: wrap;

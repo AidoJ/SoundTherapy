@@ -13,6 +13,17 @@ const AdminPanel = ({ onLogout }) => {
   const [editingItem, setEditingItem] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
+  // Audio file upload form state
+  const [audioForm, setAudioForm] = useState({
+    file: null,
+    frequency_min: '',
+    frequency_max: '',
+    primary_intentions: '',
+    healing_properties: '',
+    harmonic_connections: '',
+    frequency_family: ''
+  });
+
   // Form states
   const [clientForm, setClientForm] = useState({
     first_name: '',
@@ -277,6 +288,80 @@ const AdminPanel = ({ onLogout }) => {
     });
   };
 
+  const handleAudioUpload = async (e) => {
+    e.preventDefault();
+
+    if (!audioForm.file) {
+      alert('Please select an audio file');
+      return;
+    }
+
+    setUploadingFile(true);
+
+    try {
+      // 1. Upload file to Supabase Storage
+      const fileExt = audioForm.file.name.split('.').pop();
+      const fileName = `${audioForm.frequency_min}Hz-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio-files')
+        .upload(filePath, audioForm.file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert('Error uploading file: ' + uploadError.message);
+        setUploadingFile(false);
+        return;
+      }
+
+      // 2. Get public URL
+      const { data: urlData } = supabase.storage
+        .from('audio-files')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // 3. Insert record in audio_files table
+      const { error: dbError } = await supabase
+        .from('audio_files')
+        .insert([{
+          file_name: audioForm.file.name,
+          file_url: publicUrl,
+          frequency_min: parseInt(audioForm.frequency_min),
+          frequency_max: parseInt(audioForm.frequency_max),
+          primary_intentions: audioForm.primary_intentions.split(',').map(i => i.trim()),
+          healing_properties: audioForm.healing_properties.split(',').map(p => p.trim()),
+          harmonic_connections: audioForm.harmonic_connections ?
+            audioForm.harmonic_connections.split(',').map(h => parseInt(h.trim())) : [],
+          frequency_family: audioForm.frequency_family
+        }]);
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        alert('Error saving to database: ' + dbError.message);
+      } else {
+        alert('Audio file uploaded successfully!');
+        setShowAddModal(false);
+        setAudioForm({
+          file: null,
+          frequency_min: '',
+          frequency_max: '',
+          primary_intentions: '',
+          healing_properties: '',
+          harmonic_connections: '',
+          frequency_family: ''
+        });
+        fetchAudioFiles();
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Error uploading file: ' + err.message);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const editClient = (client) => {
     setEditingItem(client);
     setClientForm({
@@ -452,7 +537,9 @@ const AdminPanel = ({ onLogout }) => {
           <div className="tab-content">
             <div className="tab-header">
               <h2>Audio Files ({audioFiles.length})</h2>
-              <p className="tab-subtitle">Upload and manage healing frequency audio files from Supabase Storage</p>
+              <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+                + Upload Audio File
+              </button>
             </div>
 
             <div className="audio-files-list">
@@ -743,6 +830,82 @@ const AdminPanel = ({ onLogout }) => {
               <div className="modal-actions">
                 <button type="button" onClick={() => setEditingItem(null)}>Cancel</button>
                 <button type="submit" className="btn-primary">Update Frequency</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD AUDIO FILE MODAL */}
+      {showAddModal && activeTab === 'audio' && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>Upload Audio File</h2>
+            <form onSubmit={handleAudioUpload}>
+              <div className="file-upload-section">
+                <label className="file-upload-label">
+                  <span>📁 Choose Audio File (MP3 or WAV)</span>
+                  <input
+                    type="file"
+                    accept="audio/mp3,audio/wav,audio/mpeg"
+                    required
+                    onChange={(e) => setAudioForm({...audioForm, file: e.target.files[0]})}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {audioForm.file && (
+                  <p className="file-selected">✓ {audioForm.file.name}</p>
+                )}
+              </div>
+
+              <input
+                type="number"
+                placeholder="Frequency Min (Hz) - e.g., 174"
+                required
+                value={audioForm.frequency_min}
+                onChange={e => setAudioForm({...audioForm, frequency_min: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Frequency Max (Hz) - e.g., 174"
+                required
+                value={audioForm.frequency_max}
+                onChange={e => setAudioForm({...audioForm, frequency_max: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Primary Intentions (comma-separated) - e.g., stress, pain, sleep"
+                required
+                value={audioForm.primary_intentions}
+                onChange={e => setAudioForm({...audioForm, primary_intentions: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Healing Properties (comma-separated) - e.g., Stress Relief, Pain/Tension"
+                required
+                value={audioForm.healing_properties}
+                onChange={e => setAudioForm({...audioForm, healing_properties: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Harmonic Connections (comma-separated Hz) - e.g., 111, 222"
+                value={audioForm.harmonic_connections}
+                onChange={e => setAudioForm({...audioForm, harmonic_connections: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Frequency Family - e.g., Grounding"
+                value={audioForm.frequency_family}
+                onChange={e => setAudioForm({...audioForm, frequency_family: e.target.value})}
+              />
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowAddModal(false)} disabled={uploadingFile}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={uploadingFile}>
+                  {uploadingFile ? 'Uploading...' : 'Upload & Save'}
+                </button>
               </div>
             </form>
           </div>
