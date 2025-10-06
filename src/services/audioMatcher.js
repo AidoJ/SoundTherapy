@@ -8,7 +8,7 @@ export const fetchAudioFilesWithMetadata = async () => {
     const { data, error } = await supabase
       .from('audio_files')
       .select('*')
-      .order('frequency_min', { ascending: true });
+      .order('frequency_range_min', { ascending: true });
 
     if (error) {
       console.error('Error fetching audio files:', error);
@@ -39,11 +39,11 @@ export const matchAudioFile = async (formData) => {
 
   // Initialize scores for all audio files
   audioFiles.forEach(audio => {
-    const key = `${audio.frequency_min}-${audio.frequency_max}`;
+    const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
     scores[key] = {
       score: 0,
       audioFile: audio,
-      frequency: audio.frequency_min // Use min frequency as representative
+      frequency: audio.frequency_range_min // Use min frequency as representative
     };
   });
 
@@ -51,7 +51,7 @@ export const matchAudioFile = async (formData) => {
   if (formData.intention && formData.intention.length > 0) {
     formData.intention.forEach(intent => {
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+        const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
 
         // Check if primary_intentions array includes this intent
         if (audio.primary_intentions && audio.primary_intentions.includes(intent)) {
@@ -62,7 +62,7 @@ export const matchAudioFile = async (formData) => {
         if (audio.harmonic_connections && Array.isArray(audio.harmonic_connections)) {
           audio.harmonic_connections.forEach(relatedHz => {
             const relatedAudio = audioFiles.find(a =>
-              a.frequency_min <= relatedHz && a.frequency_max >= relatedHz
+              a.frequency_range_min <= relatedHz && a.frequency_range_max >= relatedHz
             );
             if (relatedAudio && relatedAudio.primary_intentions?.includes(intent)) {
               scores[key].score += 5;
@@ -77,9 +77,9 @@ export const matchAudioFile = async (formData) => {
   if (formData.selectedFrequencies && formData.selectedFrequencies.length > 0) {
     formData.selectedFrequencies.forEach(selectedHz => {
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+        const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
         // Check if selected frequency is in this audio file's range
-        if (selectedHz >= audio.frequency_min && selectedHz <= audio.frequency_max) {
+        if (selectedHz >= audio.frequency_range_min && selectedHz <= audio.frequency_range_max) {
           scores[key].score += 10;
         }
       });
@@ -90,7 +90,7 @@ export const matchAudioFile = async (formData) => {
   if (formData.emotionalIndicators && formData.emotionalIndicators.length > 0) {
     formData.emotionalIndicators.forEach(indicator => {
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+        const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
 
         if (audio.healing_properties && Array.isArray(audio.healing_properties)) {
           const lowerIndicator = indicator.toLowerCase();
@@ -109,7 +109,7 @@ export const matchAudioFile = async (formData) => {
 
   // 4. ENERGY LEVELS (Weight: 3 points each)
   audioFiles.forEach(audio => {
-    const key = `${audio.frequency_min}-${audio.frequency_max}`;
+    const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
 
     if (!audio.healing_properties) return;
 
@@ -155,7 +155,7 @@ export const matchAudioFile = async (formData) => {
   if (formData.healthConcerns && formData.healthConcerns.length > 0) {
     formData.healthConcerns.forEach(concern => {
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+        const key = `${audio.frequency_range_min}-${audio.frequency_range_max}`;
 
         if (!audio.healing_properties) return;
 
@@ -172,18 +172,28 @@ export const matchAudioFile = async (formData) => {
     });
   }
 
-  // Find the highest scoring audio file
+  // Find the highest scoring audio file(s)
   let maxScore = 0;
-  let recommendedFrequency = null;
-  let selectedAudioFile = null;
+  let topMatches = [];
 
   Object.entries(scores).forEach(([key, data]) => {
     if (data.score > maxScore) {
       maxScore = data.score;
-      recommendedFrequency = data.frequency;
-      selectedAudioFile = data.audioFile;
+      topMatches = [data]; // New highest score - reset array with this match
+    } else if (data.score === maxScore && data.score > 0) {
+      topMatches.push(data); // Same score - add to candidates
     }
   });
+
+  // Randomly select from top matches if multiple files have same score
+  let selectedMatch = null;
+  if (topMatches.length > 0) {
+    const randomIndex = Math.floor(Math.random() * topMatches.length);
+    selectedMatch = topMatches[randomIndex];
+  }
+
+  const recommendedFrequency = selectedMatch?.frequency || null;
+  const selectedAudioFile = selectedMatch?.audioFile || null;
 
   // FALLBACK SYSTEM:
   // 1. If we found a match (score > 0), use it
@@ -195,7 +205,7 @@ export const matchAudioFile = async (formData) => {
 
   // 2. Try 432 Hz (Universal Balance) as default fallback
   const fallback432 = audioFiles.find(
-    audio => audio.frequency_min <= 432 && audio.frequency_max >= 432
+    audio => audio.frequency_range_min <= 432 && audio.frequency_range_max >= 432
   );
 
   if (fallback432) {
@@ -207,7 +217,7 @@ export const matchAudioFile = async (formData) => {
   if (audioFiles.length > 0) {
     const firstAvailable = audioFiles[0];
     console.log('⚠️ No 432 Hz available - Using first available audio file:', firstAvailable.file_name);
-    return firstAvailable.frequency_min;
+    return firstAvailable.frequency_range_min;
   }
 
   // 4. Last resort - return 432 Hz even if file doesn't exist (will show error to user)
@@ -224,8 +234,8 @@ export const getAudioFileForFrequency = async (frequency) => {
     const { data, error } = await supabase
       .from('audio_files')
       .select('*')
-      .lte('frequency_min', frequency)
-      .gte('frequency_max', frequency)
+      .lte('frequency_range_min', frequency)
+      .gte('frequency_range_max', frequency)
       .single();
 
     if (error) {
@@ -234,7 +244,7 @@ export const getAudioFileForFrequency = async (frequency) => {
       const { data: exactMatch, error: exactError } = await supabase
         .from('audio_files')
         .select('*')
-        .eq('frequency_min', frequency)
+        .eq('frequency_range_min', frequency)
         .single();
 
       if (exactError) {
@@ -259,7 +269,7 @@ export const getFrequencyMetadata = async (frequency) => {
   const audioFiles = await fetchAudioFilesWithMetadata();
 
   const matchingFile = audioFiles.find(
-    audio => audio.frequency_min <= frequency && audio.frequency_max >= frequency
+    audio => audio.frequency_range_min <= frequency && audio.frequency_range_max >= frequency
   );
 
   if (matchingFile) {
