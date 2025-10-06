@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import WelcomeScreen from './components/WelcomeScreen';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
-import { analyzeFrequency } from './utils/frequencyAnalyzer';
+import { matchAudioFile, getAudioFileForFrequency } from './services/audioMatcher';
 import { saveClient, saveSession } from './services/supabaseClient';
 import { sendClientConfirmation, sendPractitionerNotification } from './services/emailService';
 import './App.css';
@@ -20,9 +20,13 @@ function App() {
     setLoading(true);
 
     try {
-      // 1. Analyze frequency based on form data
-      const frequency = analyzeFrequency(formData);
+      // 1. Use intelligent audio matcher to select best frequency
+      const frequency = await matchAudioFile(formData);
       setRecommendedFrequency(frequency);
+
+      // Get the audio file from database
+      const audioFile = await getAudioFileForFrequency(frequency);
+      console.log('Selected audio file:', audioFile);
 
       // 2. Save to Supabase
       // First, check if client exists or create new
