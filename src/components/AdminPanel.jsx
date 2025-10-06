@@ -512,7 +512,7 @@ const AdminPanel = ({ onLogout }) => {
                       <button className="btn-delete-small" onClick={() => handleDeleteFrequency(freq.id)}>×</button>
                     </div>
                   </div>
-                  <h4>{freq.frequency_name}</h4>
+                  <h4>{freq.name}</h4>
                   <p>{freq.description}</p>
                   <div className="freq-meta">
                     <span>Chakra: {freq.chakra}</span>
