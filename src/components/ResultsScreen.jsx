@@ -1,10 +1,30 @@
-import React from 'react';
-import { getFrequencyData } from '../utils/frequencyData';
+import React, { useState, useEffect } from 'react';
+import { getFrequencyMetadata } from '../services/audioMatcher';
 import AudioPlayer from './AudioPlayer';
 import './ResultsScreen.css';
 
 const ResultsScreen = ({ frequency, onReset }) => {
-  const frequencyInfo = getFrequencyData(frequency);
+  const [frequencyInfo, setFrequencyInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFrequencyData = async () => {
+      setLoading(true);
+      const data = await getFrequencyMetadata(frequency);
+      setFrequencyInfo(data);
+      setLoading(false);
+    };
+
+    loadFrequencyData();
+  }, [frequency]);
+
+  if (loading) {
+    return (
+      <div className="results-screen">
+        <div className="loading">Loading frequency information...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="results-screen">
@@ -16,9 +36,23 @@ const ResultsScreen = ({ frequency, onReset }) => {
       </div>
 
       <div className="frequency-card">
-        <h2 className="frequency-hz">{frequency} Hz</h2>
+        <h2 className="frequency-hz">{frequencyInfo.hz} Hz</h2>
         <h3 className="frequency-name">{frequencyInfo.name}</h3>
-        <p className="frequency-description">{frequencyInfo.description}</p>
+        <p className="frequency-description">
+          {frequencyInfo.healingProperties && frequencyInfo.healingProperties.length > 0
+            ? `Healing Properties: ${frequencyInfo.healingProperties.join(', ')}`
+            : 'A healing frequency selected for your session'}
+        </p>
+        {frequencyInfo.primaryIntentions && frequencyInfo.primaryIntentions.length > 0 && (
+          <p className="frequency-intentions">
+            <strong>Primary Intentions:</strong> {frequencyInfo.primaryIntentions.join(', ')}
+          </p>
+        )}
+        {frequencyInfo.family && (
+          <p className="frequency-family">
+            <strong>Family:</strong> {frequencyInfo.family}
+          </p>
+        )}
       </div>
 
       <AudioPlayer frequency={frequency} />
