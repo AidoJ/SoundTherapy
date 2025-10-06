@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { getAudioFileForFrequency } from '../services/audioMatcher';
 import './AudioPlayer.css';
 
 const AudioPlayer = ({ frequency }) => {
@@ -7,9 +8,27 @@ const AudioPlayer = ({ frequency }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(70);
+  const [audioFile, setAudioFile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // For now, use the sample 174Hz file - in production, this would query Supabase
-  const audioFile = `/Music/Grounding - 174Hz.mp3`;
+  // Fetch audio file from database based on frequency
+  useEffect(() => {
+    const loadAudioFile = async () => {
+      setLoading(true);
+      const audioData = await getAudioFileForFrequency(frequency);
+
+      if (audioData && audioData.file_url) {
+        setAudioFile(audioData.file_url);
+      } else {
+        console.error('No audio file found for frequency:', frequency);
+        setAudioFile(null);
+      }
+
+      setLoading(false);
+    };
+
+    loadAudioFile();
+  }, [frequency]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -28,7 +47,7 @@ const AudioPlayer = ({ frequency }) => {
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [audioFile]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -69,6 +88,23 @@ const AudioPlayer = ({ frequency }) => {
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="audio-player">
+        <h3>🎵 Loading Audio...</h3>
+      </div>
+    );
+  }
+
+  if (!audioFile) {
+    return (
+      <div className="audio-player">
+        <h3>⚠️ No audio file available for this frequency</h3>
+        <p>Please upload an audio file in the admin panel that covers {frequency} Hz</p>
+      </div>
+    );
+  }
 
   return (
     <div className="audio-player">
