@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { contraindicationInfo } from '../utils/contraindicationInfo';
-import './IntakeForm.css';
-
-const IntakeForm = ({ onSubmit }) => {
+import React, { useState, useEffect, useRef } from 'react';                     
+import { contraindicationInfo } from '../utils/contraindicationInfo';                               
+import './IntakeForm.css';                                                                              
+                                                                                                        
+ const IntakeForm = ({ onSubmit }) => {                                                                    
+ const signatureCanvasRef = useRef(null);                                                                
+ const [isDrawing, setIsDrawing] = useState(false);                                                      
+ const [signatureEmpty, setSignatureEmpty] = useState(true);  
   const [formData, setFormData] = useState({
     // Basic Info
     date: new Date().toISOString().split('T')[0],
