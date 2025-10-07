@@ -404,7 +404,7 @@ const IntakeForm = ({ onSubmit }) => {
             ))}
           </div>
           <div className="form-group" style={{ marginTop: '16px' }}>
-            <label>Any intuitive messages, dreams, or intentions to honour today?</label>
+            <label>Any recurring thoughts or dreams that tend to occupy your mind?</label>
             <textarea
               name="intuitiveMessages"
               value={formData.intuitiveMessages}
@@ -426,7 +426,7 @@ const IntakeForm = ({ onSubmit }) => {
               <li>I will inform the practitioner immediately of any discomfort, dizziness, or emotional distress.</li>
               <li>I accept full responsibility for my participation and any responses—physical, mental, or emotional—that may occur.</li>
               <li>All shared information is confidential, except where disclosure is required by law.</li>
-              <li>I release the practitioner and facility from any liability arising from participation, except where prohibited by law.</li>
+              <li>I release the practitioner and Galdon Training Pty Ltd T/A Rejuvenators Mobile Massage from any liability arising from participation, except where prohibited by law.</li>
               <li>I confirm I am of sound mind and legal age to give informed consent.</li>
             </ul>
           </div>
