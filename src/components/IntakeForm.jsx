@@ -465,6 +465,7 @@ const IntakeForm = ({ onSubmit }) => {
               { value: 'surgery', label: 'Recent Surgery/Open Wounds' },
               { value: 'hypotension', label: 'Severe Low Blood Pressure' },
               { value: 'epilepsy', label: 'Seizure Disorders' },
+              { value: 'cancer', label: 'Chemotherapy and Active Cancer Treatments' },
               { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
               { value: 'psychotic', label: 'Psychotic Conditions' },
               { value: 'pregnancy', label: 'Pregnancy' },
