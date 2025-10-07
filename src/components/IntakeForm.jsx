@@ -4,11 +4,8 @@ import './IntakeForm.css';
 
 const IntakeForm = ({ onSubmit }) => {
   const signatureCanvasRef = useRef(null);
-  const therapistSignatureCanvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureEmpty, setSignatureEmpty] = useState(true);
-  const [isDrawingTherapist, setIsDrawingTherapist] = useState(false);
-  const [therapistSignatureEmpty, setTherapistSignatureEmpty] = useState(true);
 
   const [formData, setFormData] = useState({
     // Basic Info
@@ -44,11 +41,7 @@ const IntakeForm = ({ onSubmit }) => {
     // Consent
     consentGiven: false,
     signature: '',
-    signatureDate: new Date().toISOString().split('T')[0],
-
-    // Therapist Section
-    therapistNotes: '',
-    therapistSignature: ''
+    signatureDate: new Date().toISOString().split('T')[0]
   });
 
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -182,58 +175,6 @@ const IntakeForm = ({ onSubmit }) => {
     setFormData(prev => ({ ...prev, signature: '' }));
   };
 
-  // Therapist signature functions
-  const startDrawingTherapist = (e) => {
-    const canvas = therapistSignatureCanvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    setIsDrawingTherapist(true);
-    ctx.beginPath();
-
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-    ctx.moveTo(x, y);
-  };
-
-  const drawTherapist = (e) => {
-    if (!isDrawingTherapist) return;
-
-    const canvas = therapistSignatureCanvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setTherapistSignatureEmpty(false);
-  };
-
-  const stopDrawingTherapist = () => {
-    setIsDrawingTherapist(false);
-  };
-
-  const clearTherapistSignature = () => {
-    const canvas = therapistSignatureCanvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setTherapistSignatureEmpty(true);
-    setFormData(prev => ({ ...prev, therapistSignature: '' }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -253,18 +194,11 @@ const IntakeForm = ({ onSubmit }) => {
       return;
     }
 
-    // Convert signature canvases to base64
+    // Convert signature canvas to base64
     const canvas = signatureCanvasRef.current;
     const signatureDataUrl = canvas.toDataURL();
 
-    const therapistCanvas = therapistSignatureCanvasRef.current;
-    const therapistSignatureDataUrl = therapistSignatureEmpty ? '' : therapistCanvas.toDataURL();
-
-    onSubmit({
-      ...formData,
-      signature: signatureDataUrl,
-      therapistSignature: therapistSignatureDataUrl
-    });
+    onSubmit({ ...formData, signature: signatureDataUrl });
   };
 
   return (
@@ -465,7 +399,6 @@ const IntakeForm = ({ onSubmit }) => {
               { value: 'surgery', label: 'Recent Surgery/Open Wounds' },
               { value: 'hypotension', label: 'Severe Low Blood Pressure' },
               { value: 'epilepsy', label: 'Seizure Disorders' },
-              { value: 'cancer', label: 'Chemotherapy and Active Cancer Treatments' },
               { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
               { value: 'psychotic', label: 'Psychotic Conditions' },
               { value: 'pregnancy', label: 'Pregnancy' },
@@ -623,75 +556,12 @@ const IntakeForm = ({ onSubmit }) => {
           </div>
         </section>
 
-        {/* Therapist Section */}
-        <section className="form-card" style={{ background: '#f0f8ff', borderLeft: '4px solid #007e8c' }}>
-          <h3>6. Therapist Notes & Signature</h3>
-          <p className="form-help" style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
-            To be completed by the therapist after the session
-          </p>
-
-          <div className="form-group">
-            <label>Session Notes</label>
-            <textarea
-              name="therapistNotes"
-              value={formData.therapistNotes}
-              onChange={handleInputChange}
-              placeholder="Document observations, client responses, adjustments made, and recommendations for future sessions..."
-              rows={6}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div className="form-group" style={{ marginTop: '20px' }}>
-            <label>Therapist Signature</label>
-            <div style={{ border: '2px solid #ddd', borderRadius: '8px', background: 'white' }}>
-              <canvas
-                ref={therapistSignatureCanvasRef}
-                width={400}
-                height={150}
-                style={{ display: 'block', cursor: 'crosshair', touchAction: 'none' }}
-                onMouseDown={startDrawingTherapist}
-                onMouseMove={drawTherapist}
-                onMouseUp={stopDrawingTherapist}
-                onMouseLeave={stopDrawingTherapist}
-                onTouchStart={startDrawingTherapist}
-                onTouchMove={drawTherapist}
-                onTouchEnd={stopDrawingTherapist}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={clearTherapistSignature}
-              style={{
-                marginTop: '8px',
-                padding: '6px 12px',
-                background: '#e74c3c',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Clear Signature
-            </button>
-          </div>
-        </section>
-
         <div className="form-navigation">
           <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
             ← Start Over
           </button>
           <button type="submit" className="btn">
-            Complete Session →
+            Start Session →
           </button>
         </div>
       </form>
