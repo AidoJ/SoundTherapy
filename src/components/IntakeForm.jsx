@@ -365,15 +365,19 @@ const IntakeForm = ({ onSubmit }) => {
           </p>
           <div className="frequency-grid">
             {[
-              { value: '174', label: 'Safety • Pain relief • Grounding' },
-              { value: '285', label: 'Repair • Regeneration • Recovery' },
-              { value: '396', label: 'Release fear • Root stability' },
-              { value: '417', label: 'Transmute past • Change' },
-              { value: '528', label: 'Love • DNA harmony • Vitality' },
-              { value: '639', label: 'Heart harmony • Relationships' },
-              { value: '741', label: 'Detox • Clarity • Truth' },
-              { value: '852', label: 'Intuition • Spiritual clarity' },
-              { value: '963', label: 'Oneness • Crown awakening' }
+              { value: '174', label: 'Overwhelmed and needing calm or grounding' },
+              { value: '222', label: 'Feeling disconnected or emotionally flat' },
+              { value: '285', label: 'Questioning confidence or direction' },
+              { value: '333', label: 'Needing clarity when life feels noisy or uncertain' },
+              { value: '396', label: 'Feeling stuck in worry or self-blame' },
+              { value: '417', label: 'Struggling to forgive or let go' },
+              { value: '528', label: 'Wanting to feel more love, lightness, or joy' },
+              { value: '639', label: 'Carrying grief, loss, or heart heaviness' },
+              { value: '741', label: 'Searching for inspiration or a sense of purpose' },
+              { value: '777', label: 'Overthinking and needing stillness or space' },
+              { value: '852', label: 'Craving deeper connection or spiritual clarity' },
+              { value: '888', label: 'Seeking motivation, flow, or direction' },
+              { value: '963', label: 'Longing for peace, presence, or reconnection' }
             ].map(freq => (
               <label key={freq.value} className="frequency-option">
                 <input
