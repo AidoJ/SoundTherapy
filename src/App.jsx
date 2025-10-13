@@ -10,6 +10,7 @@ import './App.css';
 function App() {
   const [screen, setScreen] = useState('welcome'); // 'welcome', 'form', 'results'
   const [recommendedFrequency, setRecommendedFrequency] = useState(null);
+  const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleStart = () => {
@@ -20,6 +21,9 @@ function App() {
     setLoading(true);
 
     try {
+      // Store form data for later use in email
+      setSessionData(formData);
+
       // 1. Use intelligent audio matcher to select best frequency
       const frequency = await matchAudioFile(formData);
       setRecommendedFrequency(frequency);
@@ -112,6 +116,7 @@ function App() {
   const handleReset = () => {
     setScreen('welcome');
     setRecommendedFrequency(null);
+    setSessionData(null);
   };
 
   return (
@@ -126,8 +131,12 @@ function App() {
           </>
         )}
 
-        {screen === 'results' && recommendedFrequency && (
-          <ResultsScreen frequency={recommendedFrequency} onReset={handleReset} />
+        {screen === 'results' && recommendedFrequency && sessionData && (
+          <ResultsScreen
+            frequency={recommendedFrequency}
+            sessionData={sessionData}
+            onReset={handleReset}
+          />
         )}
       </div>
     </div>

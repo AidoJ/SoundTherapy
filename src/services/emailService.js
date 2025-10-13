@@ -5,8 +5,6 @@
 import emailjs from '@emailjs/browser';
 
 const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-const TEMPLATE_ID_CLIENT = import.meta.env.VITE_EMAILJS_TEMPLATE_CLIENT;
-const TEMPLATE_ID_PRACTITIONER = import.meta.env.VITE_EMAILJS_TEMPLATE_PRACTITIONER;
 const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 // Initialize EmailJS
@@ -22,7 +20,7 @@ if (PUBLIC_KEY) {
  * @returns {Promise<Object>} Email send result
  */
 export const sendClientConfirmation = async (clientData, sessionData, suggestedFrequency) => {
-  if (!SERVICE_ID || !TEMPLATE_ID_CLIENT || !PUBLIC_KEY) {
+  if (!SERVICE_ID || !PUBLIC_KEY) {
     console.warn('EmailJS not configured - skipping client email');
     return { success: false, error: 'EmailJS not configured' };
   }
@@ -40,7 +38,7 @@ export const sendClientConfirmation = async (clientData, sessionData, suggestedF
 
     const response = await emailjs.send(
       SERVICE_ID,
-      TEMPLATE_ID_CLIENT,
+      'client_confirmation', // Template ID
       templateParams
     );
 
@@ -59,7 +57,7 @@ export const sendClientConfirmation = async (clientData, sessionData, suggestedF
  * @returns {Promise<Object>} Email send result
  */
 export const sendPractitionerNotification = async (clientData, sessionData) => {
-  if (!SERVICE_ID || !TEMPLATE_ID_PRACTITIONER || !PUBLIC_KEY) {
+  if (!SERVICE_ID || !PUBLIC_KEY) {
     console.warn('EmailJS not configured - skipping practitioner email');
     return { success: false, error: 'EmailJS not configured' };
   }
@@ -89,7 +87,7 @@ export const sendPractitionerNotification = async (clientData, sessionData) => {
 
     const response = await emailjs.send(
       SERVICE_ID,
-      TEMPLATE_ID_PRACTITIONER,
+      'practitioner_notification', // Template ID
       templateParams
     );
 
@@ -97,6 +95,76 @@ export const sendPractitionerNotification = async (clientData, sessionData) => {
     return { success: true, response };
   } catch (error) {
     console.error('Error sending practitioner email:', error);
+    return { success: false, error: error.text || error.message };
+  }
+};
+
+/**
+ * Send comprehensive session summary email to client
+ * @param {Object} sessionData - Complete session data from intake form
+ * @param {Object} frequencyMetadata - Frequency information from database
+ * @param {string} therapistNotes - Notes from therapist
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendSessionSummaryEmail = async (sessionData, frequencyMetadata, therapistNotes = '') => {
+  if (!SERVICE_ID || !PUBLIC_KEY) {
+    console.warn('EmailJS not configured - skipping session summary email');
+    return { success: false, error: 'EmailJS not configured' };
+  }
+
+  try {
+    const templateParams = {
+      // Client information
+      to_name: `${sessionData.firstName} ${sessionData.surname}`,
+      to_email: sessionData.email,
+
+      // Session details
+      session_date: new Date(sessionData.date).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      session_time: sessionData.time,
+
+      // Frequency information
+      frequency_hz: `${frequencyMetadata.hz} Hz`,
+      frequency_name: frequencyMetadata.name || 'Healing Frequency',
+      frequency_family: frequencyMetadata.family || 'Universal',
+      healing_properties: frequencyMetadata.healingProperties?.join(', ') || 'Balance and harmony',
+      frequency_intentions: frequencyMetadata.primaryIntentions?.join(', ') || 'Wellness',
+
+      // Client's session intentions
+      client_intentions: sessionData.intention?.join(', ') || 'General wellness',
+      goal_description: sessionData.goalDescription || 'Relaxation and balance',
+
+      // Energy levels (pre-session)
+      physical_energy: `${sessionData.physicalEnergy}/10`,
+      emotional_balance: `${sessionData.emotionalBalance}/10`,
+      mental_clarity: `${sessionData.mentalClarity}/10`,
+      spiritual_connection: `${sessionData.spiritualConnection}/10`,
+
+      // Emotional indicators
+      emotional_indicators: sessionData.emotionalIndicators?.join(', ') || 'None',
+      intuitive_messages: sessionData.intuitiveMessages || 'None shared',
+
+      // Therapist notes
+      therapist_notes: therapistNotes || 'Session completed successfully.',
+
+      // Contact info
+      reply_to: import.meta.env.VITE_PRACTITIONER_EMAIL || 'noreply@soundhealing.com'
+    };
+
+    const response = await emailjs.send(
+      SERVICE_ID,
+      'Vibro_Followup', // Template ID
+      templateParams
+    );
+
+    console.log('✅ Session summary email sent successfully:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('❌ Error sending session summary email:', error);
     return { success: false, error: error.text || error.message };
   }
 };
@@ -113,7 +181,7 @@ export const logEmailSend = async (sessionId, emailType, recipientEmail, success
   try {
     const { supabase } = await import('./supabaseClient');
 
-    const { error } = await supabase
+    const { error} = await supabase
       .from('email_logs')
       .insert([
         {

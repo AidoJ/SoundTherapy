@@ -172,18 +172,28 @@ export const matchAudioFile = async (formData) => {
     });
   }
 
-  // Find the highest scoring audio file
+  // Find the highest scoring audio file(s)
   let maxScore = 0;
-  let recommendedFrequency = null;
-  let selectedAudioFile = null;
+  let topMatches = [];
 
   Object.entries(scores).forEach(([key, data]) => {
     if (data.score > maxScore) {
       maxScore = data.score;
-      recommendedFrequency = data.frequency;
-      selectedAudioFile = data.audioFile;
+      topMatches = [data]; // New highest score - reset array with this match
+    } else if (data.score === maxScore && data.score > 0) {
+      topMatches.push(data); // Same score - add to candidates
     }
   });
+
+  // Randomly select from top matches if multiple files have same score
+  let selectedMatch = null;
+  if (topMatches.length > 0) {
+    const randomIndex = Math.floor(Math.random() * topMatches.length);
+    selectedMatch = topMatches[randomIndex];
+  }
+
+  const recommendedFrequency = selectedMatch?.frequency || null;
+  const selectedAudioFile = selectedMatch?.audioFile || null;
 
   // FALLBACK SYSTEM:
   // 1. If we found a match (score > 0), use it
@@ -220,32 +230,32 @@ export const matchAudioFile = async (formData) => {
  */
 export const getAudioFileForFrequency = async (frequency) => {
   try {
+    console.log('🔍 Looking for audio file for frequency:', frequency);
+
     // Query audio_files table for matching frequency
+    // We want: frequency_min <= frequency <= frequency_max
     const { data, error } = await supabase
       .from('audio_files')
       .select('*')
-      .lte('frequency_min', frequency)
-      .gte('frequency_max', frequency)
-      .single();
+      .lte('frequency_min', frequency)  // frequency_min <= target
+      .gte('frequency_max', frequency); // frequency_max >= target
+
+    console.log('Query result:', { data, error });
 
     if (error) {
       console.error('Error fetching audio file:', error);
-      // Fallback to exact match
-      const { data: exactMatch, error: exactError } = await supabase
-        .from('audio_files')
-        .select('*')
-        .eq('frequency_min', frequency)
-        .single();
-
-      if (exactError) {
-        console.error('No audio file found for frequency:', frequency);
-        return null;
-      }
-
-      return exactMatch;
+      return null;
     }
 
-    return data;
+    if (!data || data.length === 0) {
+      console.log('No audio file found for frequency:', frequency);
+      return null;
+    }
+
+    // If multiple matches, return the first one
+    const selectedFile = Array.isArray(data) ? data[0] : data;
+    console.log('Selected audio file:', selectedFile);
+    return selectedFile;
   } catch (err) {
     console.error('Error in getAudioFileForFrequency:', err);
     return null;

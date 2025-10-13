@@ -36,11 +36,9 @@ const AdminPanel = ({ onLogout }) => {
 
   const [frequencyForm, setFrequencyForm] = useState({
     frequency_hz: '',
-    frequency_name: '',
+    name: '',
     description: '',
-    benefits: '',
-    chakra: '',
-    color: ''
+    benefits: ''
   });
 
   useEffect(() => {
@@ -196,8 +194,9 @@ const AdminPanel = ({ onLogout }) => {
     const { error } = await supabase
       .from('frequencies')
       .insert([{
-        ...frequencyForm,
         frequency_hz: parseInt(frequencyForm.frequency_hz),
+        name: frequencyForm.name,
+        description: frequencyForm.description,
         benefits: benefitsArray
       }]);
 
@@ -209,11 +208,9 @@ const AdminPanel = ({ onLogout }) => {
       setShowAddModal(false);
       setFrequencyForm({
         frequency_hz: '',
-        frequency_name: '',
+        name: '',
         description: '',
-        benefits: '',
-        chakra: '',
-        color: ''
+        benefits: ''
       });
       fetchFrequencies();
     }
@@ -230,11 +227,9 @@ const AdminPanel = ({ onLogout }) => {
       .from('frequencies')
       .update({
         frequency_hz: parseInt(frequencyForm.frequency_hz),
-        frequency_name: frequencyForm.frequency_name,
+        name: frequencyForm.name,
         description: frequencyForm.description,
-        benefits: benefitsArray,
-        chakra: frequencyForm.chakra,
-        color: frequencyForm.color
+        benefits: benefitsArray
       })
       .eq('id', editingItem.id);
 
@@ -246,11 +241,9 @@ const AdminPanel = ({ onLogout }) => {
       setEditingItem(null);
       setFrequencyForm({
         frequency_hz: '',
-        frequency_name: '',
+        name: '',
         description: '',
-        benefits: '',
-        chakra: '',
-        color: ''
+        benefits: ''
       });
       fetchFrequencies();
     }
@@ -280,11 +273,9 @@ const AdminPanel = ({ onLogout }) => {
     setEditingItem(freq);
     setFrequencyForm({
       frequency_hz: freq.frequency_hz.toString(),
-      frequency_name: freq.frequency_name,
+      name: freq.name,
       description: freq.description,
-      benefits: Array.isArray(freq.benefits) ? freq.benefits.join(', ') : freq.benefits,
-      chakra: freq.chakra || '',
-      color: freq.color || ''
+      benefits: Array.isArray(freq.benefits) ? freq.benefits.join(', ') : freq.benefits
     });
   };
 
@@ -301,7 +292,7 @@ const AdminPanel = ({ onLogout }) => {
     try {
       // 1. Upload file to Supabase Storage
       const fileExt = audioForm.file.name.split('.').pop();
-      const fileName = `${audioForm.frequency_min}Hz-${Date.now()}.${fileExt}`;
+      const fileName = `${audioForm.frequency_range_min}Hz-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -322,12 +313,13 @@ const AdminPanel = ({ onLogout }) => {
 
       const publicUrl = urlData.publicUrl;
 
-      // 3. Insert record in audio_files table
+      // 3. Insert record in audio_files table - matching exact DB schema
       const { error: dbError } = await supabase
         .from('audio_files')
         .insert([{
           file_name: audioForm.file.name,
           file_url: publicUrl,
+          file_type: fileExt.toLowerCase(),
           frequency_min: parseInt(audioForm.frequency_min),
           frequency_max: parseInt(audioForm.frequency_max),
           primary_intentions: audioForm.primary_intentions.split(',').map(i => i.trim()),
@@ -520,7 +512,7 @@ const AdminPanel = ({ onLogout }) => {
                       <button className="btn-delete-small" onClick={() => handleDeleteFrequency(freq.id)}>×</button>
                     </div>
                   </div>
-                  <h4>{freq.frequency_name}</h4>
+                  <h4>{freq.name}</h4>
                   <p>{freq.description}</p>
                   <div className="freq-meta">
                     <span>Chakra: {freq.chakra}</span>

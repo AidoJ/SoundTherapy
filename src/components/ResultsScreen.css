@@ -13,18 +13,18 @@
 
 .results-hero h2 {
   font-size: 32px;
-  color: var(--primary);
+  color: #007e8c;
   margin-bottom: 12px;
 }
 
 .results-subtitle {
-  color: var(--muted);
+  color: #007e8c;
   font-size: 16px;
 }
 
 .frequency-card {
-  background: var(--gradient);
-  color: white;
+  background: white;
+  color: #007e8c;
   padding: 50px 40px;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
@@ -35,7 +35,7 @@
 .frequency-hz {
   font-size: clamp(48px, 8vw, 72px);
   margin-bottom: 12px;
-  color: white;
+  color: #007e8c;
   font-weight: 800;
 }
 
@@ -43,7 +43,7 @@
   font-size: clamp(20px, 4vw, 28px);
   opacity: 0.95;
   margin-bottom: 24px;
-  color: white;
+  color: #007e8c;
   font-weight: 600;
 }
 
@@ -53,6 +53,14 @@
   opacity: 0.95;
   max-width: 800px;
   margin: 0 auto;
+  color: #007e8c;
+}
+
+.frequency-intentions,
+.frequency-family {
+  color: #007e8c;
+  margin-top: 16px;
+  font-size: 16px;
 }
 
 .results-navigation {

@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
 const IntakeForm = ({ onSubmit }) => {
+  const signatureCanvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [signatureEmpty, setSignatureEmpty] = useState(true);
+
   const [formData, setFormData] = useState({
     // Basic Info
     date: new Date().toISOString().split('T')[0],
@@ -119,6 +123,58 @@ const IntakeForm = ({ onSubmit }) => {
     setModalInfo(null);
   };
 
+  // Signature pad functions
+  const startDrawing = (e) => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    setIsDrawing(true);
+    ctx.beginPath();
+
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    setSignatureEmpty(false);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSignatureEmpty(true);
+    setFormData(prev => ({ ...prev, signature: '' }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -133,7 +189,16 @@ const IntakeForm = ({ onSubmit }) => {
       return;
     }
 
-    onSubmit(formData);
+    if (signatureEmpty) {
+      alert('Please provide your signature');
+      return;
+    }
+
+    // Convert signature canvas to base64
+    const canvas = signatureCanvasRef.current;
+    const signatureDataUrl = canvas.toDataURL();
+
+    onSubmit({ ...formData, signature: signatureDataUrl });
   };
 
   return (
@@ -382,15 +447,16 @@ const IntakeForm = ({ onSubmit }) => {
         {/* Emotional Indicators */}
         <section className="form-card">
           <h3>4. Emotional / Spiritual Indicators</h3>
-          <p className="form-help">Select any themes that feel active right now:</p>
+          <p className="form-help">Circle any that feel active:</p>
           <div className="chips">
             {[
-              { value: 'fear', label: 'Fear / Guilt (396–417)' },
-              { value: 'grief', label: 'Grief / Heartache (639)' },
-              { value: 'confusion', label: 'Confusion / Lostness (741)' },
-              { value: 'doubt', label: 'Self-Doubt (528)' },
-              { value: 'loneliness', label: 'Loneliness (639)' },
-              { value: 'disconnection', label: 'Disconnection (852/963)' }
+              { value: 'fear', label: 'Fear / Guilt' },
+              { value: 'grief', label: 'Grief / Heartache' },
+              { value: 'confusion', label: 'Confusion' },
+              { value: 'doubt', label: 'Self-Doubt' },
+              { value: 'loneliness', label: 'Loneliness' },
+              { value: 'disconnection', label: 'Disconnection' },
+              { value: 'depression', label: 'Depression' }
             ].map(emotion => (
               <label key={emotion.value} className="chip">
                 <input
@@ -417,8 +483,17 @@ const IntakeForm = ({ onSubmit }) => {
         <section className="form-card">
           <h3>5. Consent & Acknowledgement</h3>
           <div className="consent-notice">
-            Vibroacoustic Therapy uses low-frequency sound and gentle vibration to promote relaxation and balance.
-            It is complementary and non-medical, not a substitute for diagnosis or treatment. Please communicate any discomfort immediately.
+            <p>I understand that Vibroacoustic Therapy involves the use of low-frequency sound and gentle vibration to promote relaxation and balance. I acknowledge and agree that:</p>
+            <ul style={{ marginLeft: '20px', lineHeight: '1.8', marginTop: '12px' }}>
+              <li>The session is complementary and non-medical, not intended to diagnose, treat, cure, or prevent disease.</li>
+              <li>The practitioner is not a medical doctor or psychotherapist and makes no guarantees of outcome.</li>
+              <li>I have disclosed all relevant health information to ensure safe use of the Vibroacoustic Bed.</li>
+              <li>I will inform the practitioner immediately of any discomfort, dizziness, or emotional distress.</li>
+              <li>I accept full responsibility for my participation and any responses—physical, mental, or emotional—that may occur.</li>
+              <li>All shared information is confidential, except where disclosure is required by law.</li>
+              <li>I release the practitioner and facility from any liability arising from participation, except where prohibited by law.</li>
+              <li>I confirm I am of sound mind and legal age to give informed consent.</li>
+            </ul>
           </div>
           <div className="consent-check">
             <input
@@ -430,20 +505,43 @@ const IntakeForm = ({ onSubmit }) => {
               required
             />
             <label htmlFor="consent" className="consent-label">
-              I have provided accurate information and consent to receive Vibroacoustic Therapy. I release the practitioner and facility from liability as permitted by law, and I understand I may withdraw consent at any time.
+              I have read and agree to the above terms and conditions.
             </label>
           </div>
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
-              <label>Client Signature (type name)</label>
-              <input
-                type="text"
-                name="signature"
-                value={formData.signature}
-                onChange={handleInputChange}
-                placeholder="Your full name"
-                required
-              />
+              <label>Client Signature</label>
+              <div style={{ border: '2px solid #ddd', borderRadius: '8px', background: 'white' }}>
+                <canvas
+                  ref={signatureCanvasRef}
+                  width={400}
+                  height={150}
+                  style={{ display: 'block', cursor: 'crosshair', touchAction: 'none' }}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawing}
+                  onTouchMove={draw}
+                  onTouchEnd={stopDrawing}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={clearSignature}
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  background: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Clear Signature
+              </button>
             </div>
             <div className="form-group">
               <label>Signature Date</label>
@@ -463,7 +561,7 @@ const IntakeForm = ({ onSubmit }) => {
             ← Start Over
           </button>
           <button type="submit" className="btn">
-            Complete Session →
+            Start Session →
           </button>
         </div>
       </form>
