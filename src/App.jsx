@@ -3,8 +3,8 @@ import WelcomeScreen from './components/WelcomeScreen';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
 import { matchAudioFile, getAudioFileForFrequency } from './services/audioMatcher';
-import { saveClient, saveSession } from './services/supabaseClient';
-import { sendClientConfirmation, sendPractitionerNotification } from './services/emailService';
+import { saveClient, saveSession, getClientByEmail } from './services/supabaseClient';
+// Email sending is now handled in ResultsScreen when Complete Session is clicked
 import './App.css';
 
 function App() {
@@ -43,15 +43,24 @@ function App() {
         gender: formData.gender || null
       };
 
-      // Save or get client
-      const clientResult = await saveClient(clientData);
+      // Check if client exists
       let clientId;
+      const existingClient = await getClientByEmail(clientData.email);
 
-      if (clientResult.success) {
-        clientId = clientResult.data.id;
+      if (existingClient.success && existingClient.data) {
+        // Client exists, use existing ID
+        clientId = existingClient.data.id;
+        console.log('Existing client found:', clientId);
       } else {
-        console.error('Error saving client:', clientResult.error);
-        // For now, continue without saving
+        // Client doesn't exist, create new
+        const clientResult = await saveClient(clientData);
+        if (clientResult.success) {
+          clientId = clientResult.data.id;
+          console.log('New client created:', clientId);
+        } else {
+          console.error('Error saving client:', clientResult.error);
+          // For now, continue without saving
+        }
       }
 
       // 3. Save session data
@@ -84,20 +93,7 @@ function App() {
         if (sessionResult.success) {
           console.log('Session saved successfully:', sessionResult.data);
 
-          // 4. Send emails (optional - will skip if EmailJS not configured)
-          try {
-            await sendClientConfirmation(clientData, {
-              sessionDate: formData.date,
-              sessionTime: formData.time
-            }, frequency);
-
-            await sendPractitionerNotification(clientData, {
-              ...sessionData,
-              frequencySuggested: frequency
-            });
-          } catch (emailError) {
-            console.log('Email sending skipped or failed:', emailError);
-          }
+          // 4. Emails will be sent when Complete Session button is clicked
         } else {
           console.error('Error saving session:', sessionResult.error);
         }

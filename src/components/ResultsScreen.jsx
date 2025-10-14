@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getFrequencyMetadata } from '../services/audioMatcher';
-import { sendSessionSummaryEmail } from '../services/emailService';
+import { sendVibroFollowupEmails } from '../services/emailService';
 import AudioPlayer from './AudioPlayer';
 import './ResultsScreen.css';
 
@@ -84,17 +84,28 @@ const ResultsScreen = ({ frequency, sessionData, onReset }) => {
     setSendingEmail(true);
 
     try {
-      // Send session summary email to client
-      const emailResult = await sendSessionSummaryEmail(
+      // Send Vibro_Followup emails to both client and practitioner
+      const emailResult = await sendVibroFollowupEmails(
         sessionData,
         frequencyInfo,
         therapistNotes
       );
 
       if (emailResult.success) {
-        alert('Session completed! Summary email sent to client.');
+        const clientSuccess = emailResult.results?.client?.success;
+        const practitionerSuccess = emailResult.results?.practitioner?.success;
+        
+        if (clientSuccess && practitionerSuccess) {
+          alert('Session completed! Vibro_Followup emails sent to both client and practitioner.');
+        } else if (clientSuccess) {
+          alert('Session completed! Vibro_Followup email sent to client. Practitioner email failed.');
+        } else if (practitionerSuccess) {
+          alert('Session completed! Vibro_Followup email sent to practitioner. Client email failed.');
+        } else {
+          alert('Session completed! However, emails could not be sent. Please check EmailJS configuration.');
+        }
       } else {
-        alert('Session completed! However, the email could not be sent. Please check EmailJS configuration.');
+        alert('Session completed! However, the emails could not be sent. Please check EmailJS configuration.');
       }
 
       // TODO: Save therapist notes and signature to database
