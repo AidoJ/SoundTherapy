@@ -11,6 +11,7 @@ const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 const CLIENT_CONFIRMATION_TEMPLATE = import.meta.env.VITE_EMAILJS_CLIENT_TEMPLATE || 'client_confirmation';
 const PRACTITIONER_NOTIFICATION_TEMPLATE = import.meta.env.VITE_EMAILJS_PRACTITIONER_TEMPLATE || 'practitioner_notification';
 const SESSION_SUMMARY_TEMPLATE = import.meta.env.VITE_EMAILJS_SUMMARY_TEMPLATE || 'Vibro_Followup';
+const VIBRO_FOLLOWUP_TEMPLATE = import.meta.env.VITE_EMAILJS_VIBRO_FOLLOWUP_TEMPLATE || 'Vibro_Followup';
 
 // Initialize EmailJS
 if (PUBLIC_KEY) {
@@ -217,12 +218,18 @@ export const sendSessionSummaryEmail = async (sessionData, frequencyMetadata, th
  * @returns {Promise<Object>} Email send results
  */
 export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, therapistNotes = '') => {
+  console.log('🚀 Starting Vibro_Followup email send...');
+  console.log('EmailJS Config:', { SERVICE_ID, PUBLIC_KEY: PUBLIC_KEY ? 'SET' : 'NOT SET' });
+  console.log('Template ID:', VIBRO_FOLLOWUP_TEMPLATE);
+  
   if (!SERVICE_ID || !PUBLIC_KEY) {
     console.warn('EmailJS not configured - skipping Vibro_Followup emails');
     return { success: false, error: 'EmailJS not configured' };
   }
 
   const practitionerEmail = import.meta.env.VITE_PRACTITIONER_EMAIL;
+  console.log('Practitioner email:', practitionerEmail);
+  
   if (!practitionerEmail) {
     console.warn('Practitioner email not configured');
     return { success: false, error: 'Practitioner email not set' };
@@ -297,8 +304,8 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
 
     // Send both emails
     const [clientResult, practitionerResult] = await Promise.allSettled([
-      emailjs.send(SERVICE_ID, 'Vibro_Followup', clientTemplateParams),
-      emailjs.send(SERVICE_ID, 'Vibro_Followup', practitionerTemplateParams)
+      emailjs.send(SERVICE_ID, VIBRO_FOLLOWUP_TEMPLATE, clientTemplateParams),
+      emailjs.send(SERVICE_ID, VIBRO_FOLLOWUP_TEMPLATE, practitionerTemplateParams)
     ]);
 
     const results = {
@@ -317,12 +324,18 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
       console.log('✅ Vibro_Followup email sent to client successfully');
     } else {
       console.error('❌ Failed to send Vibro_Followup email to client:', results.client.error);
+      if (results.client.error?.text) {
+        console.error('Full client error:', results.client.error.text);
+      }
     }
 
     if (results.practitioner.success) {
       console.log('✅ Vibro_Followup email sent to practitioner successfully');
     } else {
       console.error('❌ Failed to send Vibro_Followup email to practitioner:', results.practitioner.error);
+      if (results.practitioner.error?.text) {
+        console.error('Full practitioner error:', results.practitioner.error.text);
+      }
     }
 
     // Return success if at least one email was sent successfully
@@ -344,6 +357,52 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
     }
     
     return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Test EmailJS connection and template
+ * @returns {Promise<Object>} Test result
+ */
+export const testEmailJSConnection = async () => {
+  if (!SERVICE_ID || !PUBLIC_KEY) {
+    return { success: false, error: 'EmailJS not configured' };
+  }
+
+  try {
+    console.log('🧪 Testing EmailJS connection...');
+    console.log('Service ID:', SERVICE_ID);
+    console.log('Template ID:', VIBRO_FOLLOWUP_TEMPLATE);
+    
+    const testParams = {
+      to_name: 'Test User',
+      to_email: 'test@example.com',
+      session_date: 'Test Date',
+      session_time: 'Test Time',
+      frequency_hz: '143 Hz',
+      frequency_name: 'Test Frequency',
+      frequency_family: 'Test Family',
+      healing_properties: 'Test properties',
+      frequency_intentions: 'Test intentions',
+      client_intentions: 'Test client intentions',
+      goal_description: 'Test goal',
+      physical_energy: '5/10',
+      emotional_balance: '5/10',
+      mental_clarity: '5/10',
+      spiritual_connection: '5/10',
+      emotional_indicators: 'Test indicators',
+      intuitive_messages: 'Test messages',
+      therapist_notes: 'Test notes',
+      reply_to: 'test@example.com'
+    };
+
+    const response = await emailjs.send(SERVICE_ID, VIBRO_FOLLOWUP_TEMPLATE, testParams);
+    console.log('✅ EmailJS test successful:', response);
+    return { success: true, response };
+  } catch (error) {
+    console.error('❌ EmailJS test failed:', error);
+    console.error('Full error:', error.text || error.message);
+    return { success: false, error: error.text || error.message };
   }
 };
 

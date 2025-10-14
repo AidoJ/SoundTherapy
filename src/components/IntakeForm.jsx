@@ -61,6 +61,7 @@ const IntakeForm = ({ onSubmit }) => {
       formData.phone,
       formData.intention.length > 0,
       formData.selectedFrequencies.length > 0,
+      formData.healthConcerns.length > 0, // Health concerns now required
       formData.consentGiven,
       formData.signature
     ];
@@ -182,6 +183,23 @@ const IntakeForm = ({ onSubmit }) => {
     if (formData.selectedFrequencies.length === 0) {
       alert('Please select at least one priority frequency');
       return;
+    }
+
+    // Health concerns validation - now required
+    if (formData.healthConcerns.length === 0) {
+      alert('Please complete the Health & Comfort Check section');
+      return;
+    }
+
+    // Contraindication check
+    const hasContraindications = formData.healthConcerns.some(concern => concern !== 'none');
+    if (hasContraindications) {
+      const confirmed = window.confirm(
+        'Unfortunately you have checked an existing condition that has a contra-indication, we can not proceed with this treatment unless you have a consent form from your GP or attending Physician. Understood?'
+      );
+      if (!confirmed) {
+        return;
+      }
     }
 
     if (!formData.consentGiven) {
@@ -389,8 +407,8 @@ const IntakeForm = ({ onSubmit }) => {
 
         {/* Health Check */}
         <section className="form-card">
-          <h3>3. Health & Comfort Check</h3>
-          <p className="form-help">Please check any that apply:</p>
+          <h3>3. Health & Comfort Check <span style={{color: 'red'}}>*</span></h3>
+          <p className="form-help">Please check any that apply (required):</p>
           <div className="chips">
             {[
               { value: 'pacemaker', label: 'Pacemakers/Implants' },
@@ -402,6 +420,7 @@ const IntakeForm = ({ onSubmit }) => {
               { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
               { value: 'psychotic', label: 'Psychotic Conditions' },
               { value: 'pregnancy', label: 'Pregnancy' },
+              { value: 'chemotherapy', label: 'Chemotherapy and Active Cancer Treatment' },
               { value: 'none', label: 'None apply' }
             ].map(concern => (
               <label key={concern.value} className="chip health-chip">

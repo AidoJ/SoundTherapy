@@ -39,6 +39,10 @@ export const contraindicationInfo = {
   pregnancy: {
     title: "Pregnancy",
     text: "Due to limited research and potential effects on the fetus, vibroacoustic therapy is generally contraindicated during pregnancy, especially during the first trimester. The impact of low-frequency vibrations on fetal development has not been adequately studied."
+  },
+  chemotherapy: {
+    title: "Chemotherapy and Active Cancer Treatment",
+    text: "If you are undergoing chemotherapy, radiation, or other active cancer treatments, please obtain clearance from your oncologist or healthcare provider before beginning. While gentle sound-based sessions may support relaxation, more intense frequencies should be used cautiously during treatment and only with medical guidance."
   }
 };
 
@@ -68,6 +72,17 @@ export const hasContraindications = (selectedConcerns) => {
   if (!selectedConcerns || selectedConcerns.length === 0) return false;
   if (selectedConcerns.includes('none')) return false;
   return selectedConcerns.length > 0;
+};
+
+/**
+ * Get contraindication keys that require medical clearance
+ * @returns {Array<string>} Array of contraindication keys that require medical clearance
+ */
+export const getContraindicationsRequiringClearance = () => {
+  return [
+    'pacemaker', 'dvt', 'bleeding', 'surgery', 'hypotension', 
+    'epilepsy', 'inflammatory', 'psychotic', 'pregnancy', 'chemotherapy'
+  ];
 };
 
 /**

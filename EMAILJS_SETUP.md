@@ -79,3 +79,41 @@ After creating the `Vibro_Followup` template in your EmailJS dashboard:
 4. Check that both emails are sent successfully
 
 The app will show clear feedback about which emails were sent successfully.
+
+## Troubleshooting
+
+If you're getting 400 errors, check these common issues:
+
+### 1. Template ID Mismatch
+The most common issue is that your template ID in EmailJS doesn't match exactly. 
+
+**Check your EmailJS dashboard:**
+- Go to https://dashboard.emailjs.com/admin/templates
+- Look at the exact Template ID of your template
+- It should be exactly `Vibro_Followup` (case-sensitive)
+
+**If your template ID is different:**
+Add this environment variable to your Netlify deployment:
+```
+VITE_EMAILJS_VIBRO_FOLLOWUP_TEMPLATE=your_actual_template_id
+```
+
+### 2. Template Variables
+Make sure your template uses the exact variable names from `email-template.html`:
+- `{{to_name}}`, `{{to_email}}`, `{{session_date}}`, etc.
+
+### 3. Debug Logging
+The app now shows detailed debug information in the console:
+- EmailJS configuration status
+- Template ID being used
+- Full error messages
+
+Check the browser console for detailed error information.
+
+### 4. Test EmailJS Connection
+You can test the EmailJS connection by opening the browser console and running:
+```javascript
+// Import the test function and run it
+import { testEmailJSConnection } from './src/services/emailService.js';
+testEmailJSConnection();
+```
