@@ -20,6 +20,8 @@ const IntakeForm = ({ onSubmit }) => {
     stressAnxietyLevel: 0,
     sleepQuality: 1,
     mainPainAreas: [],
+    painMarkers: [],
+    bodyView: 'front',
 
     // Safety Screen
     healthConcerns: [],
@@ -75,7 +77,7 @@ const IntakeForm = ({ onSubmit }) => {
 
   const handleSliderChange = (name, value) => {
     setFormData(prev => ({
-      ...prev,
+          ...prev,
       [name]: parseInt(value)
     }));
   };
@@ -90,6 +92,25 @@ const IntakeForm = ({ onSubmit }) => {
   const closeModal = () => {
     setShowInfoModal(false);
     setModalInfo(null);
+  };
+
+  const handleBodyClick = (e) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Convert to SVG coordinates
+    const svgX = (x / rect.width) * 360;
+    const svgY = (y / rect.height) * 760;
+    
+    // Check if click is inside body silhouette (rough bounds)
+    if (svgY > 40 && svgY < 750 && svgX > 60 && svgX < 300) {
+      setFormData(prev => ({
+        ...prev,
+        painMarkers: [...prev.painMarkers, { x: Math.round(svgX), y: Math.round(svgY) }]
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
@@ -264,19 +285,19 @@ const IntakeForm = ({ onSubmit }) => {
             </div>
             <div className="energy-row">
               <label>Stress/Anxiety Level</label>
-              <div className="energy-slider">
+                <div className="energy-slider">
                 <span className="muted">0</span>
-                <input
-                  type="range"
+                  <input
+                    type="range"
                   min="0"
-                  max="10"
+                    max="10"
                   value={formData.stressAnxietyLevel}
                   onChange={(e) => handleSliderChange('stressAnxietyLevel', e.target.value)}
-                />
+                  />
                 <span className="muted">10</span>
                 <span className="energy-value">{formData.stressAnxietyLevel}</span>
               </div>
-            </div>
+                </div>
             <div className="energy-row">
               <label>Sleep Quality</label>
               <div className="energy-slider">
@@ -294,26 +315,148 @@ const IntakeForm = ({ onSubmit }) => {
             </div>
           </div>
           <div style={{ marginTop: '24px' }}>
-            <label>Main Pain Areas</label>
-            <div className="chips">
-              {[
-                'Neck',
-                'Shoulders',
-                'Lower back',
-                'Hips',
-                'Knees',
-                'Headaches/Migraines',
-                'Widespread (fibromyalgia)'
-              ].map(area => (
-                <label key={area} className="chip">
-                  <input
-                    type="checkbox"
-                    checked={formData.mainPainAreas.includes(area)}
-                    onChange={() => handleCheckboxGroup('mainPainAreas', area)}
-                  />
-                  <strong>{area}</strong>
-                </label>
-              ))}
+            <div className="bodymap">
+              <div className="svgbox">
+                <div className="btns" style={{ gap: '6px', justifyContent: 'flex-end', padding: '8px 10px 0 10px' }}>
+                  <button 
+                    className="secondary" 
+                    id="frontBtn" 
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, bodyView: 'front' }))}
+                    style={{ 
+                      background: formData.bodyView === 'front' ? '#008e8c' : '#e9f6f4',
+                      color: formData.bodyView === 'front' ? '#fff' : '#0a6e6a'
+                    }}
+                  >
+                    Front
+                  </button>
+                  <button 
+                    className="secondary" 
+                    id="backBtn" 
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, bodyView: 'back' }))}
+                    style={{ 
+                      background: formData.bodyView === 'back' ? '#008e8c' : '#e9f6f4',
+                      color: formData.bodyView === 'back' ? '#fff' : '#0a6e6a'
+                    }}
+                  >
+                    Back
+                  </button>
+                </div>
+                <svg 
+                  viewBox="0 0 360 760" 
+                  id="bodySvg" 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  aria-label="Tap to mark pain points" 
+                  style={{ width: '100%', height: 'auto' }}
+                  onClick={handleBodyClick}
+                >
+                  <defs>
+                    <style>
+                      {`.outline{fill:none;stroke:#99c9c6;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+                       .joint{fill:#d9efec;stroke:#bfe3df;stroke-width:1}`}
+                    </style>
+                  </defs>
+                  <rect x="0" y="0" width="360" height="760" fill="#f7fbfa"/>
+
+                  {/* FRONT silhouette */}
+                  <g id="front" className="frontView" style={{ display: formData.bodyView === 'front' ? 'block' : 'none' }}>
+                    <circle className="outline" cx="180" cy="90" r="40"/>
+                    <path className="outline" d="M168 130 L192 130 L192 152 Q192 160 180 160 Q168 160 168 152 Z"/>
+                    <path className="outline" d="M92 175 Q180 145 268 175"/>
+                    <path className="outline" d="M120 180 Q110 230 120 290 Q128 360 180 360 Q232 360 240 290 Q250 230 240 180 Q212 168 180 168 Q148 168 120 180 Z"/>
+                    <path className="outline" d="M140 360 Q180 380 220 360 Q230 370 230 388 Q230 408 180 416 Q130 408 130 388 Q130 370 140 360 Z"/>
+                    <path className="outline" d="M100 185 Q78 210 72 245 Q64 300 78 340 Q90 372 112 392 Q126 404 132 422"/>
+                    <path className="outline" d="M260 185 Q282 210 288 245 Q296 300 282 340 Q270 372 248 392 Q234 404 228 422"/>
+                    <ellipse className="outline" cx="136" cy="440" rx="16" ry="10"/>
+                    <ellipse className="outline" cx="224" cy="440" rx="16" ry="10"/>
+                    <path className="outline" d="M158 418 Q155 468 154 528 Q152 600 152 648 Q152 700 168 720 Q180 734 192 720 Q208 700 208 648 Q208 600 206 528 Q205 468 202 418"/>
+                    <circle className="joint" cx="154" cy="528" r="8"/>
+                    <circle className="joint" cx="206" cy="528" r="8"/>
+                    <path className="outline" d="M134 720 Q152 728 170 728 Q170 744 150 748 Q130 752 120 742 Q118 730 134 720 Z"/>
+                    <path className="outline" d="M190 728 Q208 728 226 720 Q242 730 240 742 Q230 752 210 748 Q190 744 190 728 Z"/>
+                  </g>
+
+                  {/* BACK silhouette */}
+                  <g id="back" className="backView" style={{ display: formData.bodyView === 'back' ? 'block' : 'none' }}>
+                    <circle className="outline" cx="180" cy="90" r="40"/>
+                    <path className="outline" d="M168 130 L192 130 L192 152 Q192 160 180 160 Q168 160 168 152 Z"/>
+                    <path className="outline" d="M92 175 Q180 155 268 175"/>
+                    <path className="outline" d="M120 182 Q110 230 118 290 Q126 352 180 360 Q234 352 242 290 Q250 230 240 182 Q212 170 180 170 Q148 170 120 182 Z"/>
+                    <path className="outline" d="M138 360 Q180 382 222 360 Q230 372 230 392 Q230 412 180 420 Q130 412 130 392 Q130 372 138 360 Z"/>
+                    <path className="outline" d="M104 186 Q86 214 82 250 Q76 300 92 340 Q106 374 128 398 Q138 410 142 430"/>
+                    <path className="outline" d="M256 186 Q274 214 278 250 Q284 300 268 340 Q254 374 232 398 Q222 410 218 430"/>
+                    <ellipse className="outline" cx="148" cy="448" rx="16" ry="10"/>
+                    <ellipse className="outline" cx="212" cy="448" rx="16" ry="10"/>
+                    <path className="outline" d="M160 420 Q158 470 156 532 Q154 600 154 650 Q154 700 170 720 Q180 734 190 720 Q206 700 206 650 Q206 600 204 532 Q202 470 200 420"/>
+                    <circle className="joint" cx="156" cy="532" r="8"/>
+                    <circle className="joint" cx="204" cy="532" r="8"/>
+                    <path className="outline" d="M138 724 Q156 732 172 732 Q172 744 154 748 Q136 752 124 742 Q122 732 138 724 Z"/>
+                    <path className="outline" d="M188 732 Q206 732 222 724 Q238 732 236 742 Q224 752 206 748 Q188 744 188 732 Z"/>
+                  </g>
+
+                  {/* Marker group */}
+                  <g id="markers">
+                    {formData.painMarkers.map((marker, index) => (
+                      <circle
+                        key={index}
+                        cx={marker.x}
+                        cy={marker.y}
+                        r="6"
+                        fill="#e11d48"
+                        stroke="#fff"
+                        strokeWidth="1.5"
+                        style={{ cursor: 'pointer' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData(prev => ({
+                            ...prev,
+                            painMarkers: prev.painMarkers.filter((_, i) => i !== index)
+                          }));
+                        }}
+                      />
+                    ))}
+                  </g>
+                </svg>
+              </div>
+              <div>
+                <label>Main Pain Areas</label>
+                <div className="chips">
+                  {[
+                    'Neck',
+                    'Shoulders',
+                    'Lower back',
+                    'Hips',
+                    'Knees',
+                    'Headaches/Migraines',
+                    'Widespread (fibromyalgia)'
+                  ].map(area => (
+                    <label key={area} className="chip">
+                <input
+                  type="checkbox"
+                        checked={formData.mainPainAreas.includes(area)}
+                        onChange={() => handleCheckboxGroup('mainPainAreas', area)}
+                />
+                      <strong>{area}</strong>
+              </label>
+            ))}
+                </div>
+                <div className="btns" style={{ marginTop: '10px' }}>
+                  <button 
+                    className="secondary" 
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, painMarkers: [] }))}
+                  >
+                    Clear pain markers
+                  </button>
+                </div>
+                <div className="muted" style={{ marginTop: '8px' }}>
+                  {formData.painMarkers.length === 0 
+                    ? 'No pain markers added.' 
+                    : `Pain markers: ${formData.painMarkers.map((p, i) => `#${i+1} (x:${p.x}, y:${p.y})`).join(', ')}`
+                  }
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -424,7 +567,7 @@ const IntakeForm = ({ onSubmit }) => {
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
-              <p>{modalInfo.text}</p>
+            <p>{modalInfo.text}</p>
             </div>
           </div>
         </div>
