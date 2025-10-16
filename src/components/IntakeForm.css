@@ -386,6 +386,21 @@ button.secondary {
   font-size: 13px;
 }
 
+/* Signature Pad Styles */
+.signature-pad {
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  margin-bottom: 8px;
+}
+
+.signature-pad canvas {
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+  border-radius: 6px;
+}
+
 @media (max-width: 768px) {
   .form-card {
     padding: 24px 20px;

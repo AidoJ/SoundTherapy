@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
@@ -35,6 +35,10 @@ const IntakeForm = ({ onSubmit }) => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [modalInfo, setModalInfo] = useState(null);
   const [progress, setProgress] = useState(0);
+
+  // Signature pad refs and state
+  const therapistSignatureCanvasRef = useRef(null);
+  const [isDrawingTherapist, setIsDrawingTherapist] = useState(false);
 
   // Update progress bar
   useEffect(() => {
@@ -113,6 +117,69 @@ const IntakeForm = ({ onSubmit }) => {
     }
   };
 
+  // Therapist signature functions
+  const startDrawingTherapist = (e) => {
+    const canvas = therapistSignatureCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    setIsDrawingTherapist(true);
+    ctx.beginPath();
+
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    ctx.moveTo(x, y);
+  };
+
+  const drawTherapist = (e) => {
+    if (!isDrawingTherapist) return;
+
+    const canvas = therapistSignatureCanvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+
+    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawingTherapist = () => {
+    if (!isDrawingTherapist) return;
+    setIsDrawingTherapist(false);
+    
+    // Save signature to form data
+    const canvas = therapistSignatureCanvasRef.current;
+    if (canvas) {
+      const signatureData = canvas.toDataURL();
+      setFormData(prev => ({
+        ...prev,
+        therapistSignature: signatureData
+      }));
+    }
+  };
+
+  const clearTherapistSignature = () => {
+    const canvas = therapistSignatureCanvasRef.current;
+    if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setFormData(prev => ({
+        ...prev,
+        therapistSignature: ''
+      }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -144,7 +211,7 @@ const IntakeForm = ({ onSubmit }) => {
       return;
     }
 
-    if (!formData.therapistSignature.trim()) {
+    if (!formData.therapistSignature) {
       alert('Please provide therapist signature');
       return;
     }
@@ -527,15 +594,36 @@ const IntakeForm = ({ onSubmit }) => {
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label htmlFor="therapistSignature">Therapist Signature *</label>
-              <input
-                type="text"
-                id="therapistSignature"
-                name="therapistSignature"
-                value={formData.therapistSignature}
-                onChange={handleInputChange}
-                placeholder="Therapist name or signature"
-                required
-              />
+              <div className="signature-pad">
+                <canvas
+                  ref={therapistSignatureCanvasRef}
+                  width="400"
+                  height="100"
+                  onMouseDown={startDrawingTherapist}
+                  onMouseMove={drawTherapist}
+                  onMouseUp={stopDrawingTherapist}
+                  onMouseLeave={stopDrawingTherapist}
+                  onTouchStart={startDrawingTherapist}
+                  onTouchMove={drawTherapist}
+                  onTouchEnd={stopDrawingTherapist}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={clearTherapistSignature}
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  background: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Clear Signature
+              </button>
             </div>
             <div className="form-group">
               <label htmlFor="signatureDate">Date of Signature</label>
