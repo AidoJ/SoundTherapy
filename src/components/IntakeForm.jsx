@@ -1,46 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
 const IntakeForm = ({ onSubmit }) => {
-  const signatureCanvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [signatureEmpty, setSignatureEmpty] = useState(true);
-
   const [formData, setFormData] = useState({
-    // Basic Info
-    date: new Date().toISOString().split('T')[0],
-    time: '',
-    firstName: '',
-    surname: '',
+    // Client Details
+    fullName: '',
+    dateOfBirth: '',
     phone: '',
     email: '',
-    dateOfBirth: '',
-    gender: '',
+    todaysDate: new Date().toISOString().split('T')[0],
+    practitioner: '',
 
-    // Session Intention
-    intention: [],
-    goalDescription: '',
+    // Primary Goals
+    primaryGoals: [],
 
-    // Energy Profile
-    physicalEnergy: 5,
-    emotionalBalance: 5,
-    mentalClarity: 5,
-    spiritualConnection: 5,
-    selectedFrequencies: [],
+    // Symptom Snapshot
+    painLevel: 0,
+    stressAnxietyLevel: 0,
+    sleepQuality: 1,
+    mainPainAreas: [],
 
-    // Health Check
+    // Safety Screen
     healthConcerns: [],
-    medications: '',
-    vibrationIntensity: 'moderate',
-
-    // Emotional Indicators
-    emotionalIndicators: [],
-    intuitiveMessages: '',
 
     // Consent
     consentGiven: false,
-    signature: '',
+    therapistSignature: '',
     signatureDate: new Date().toISOString().split('T')[0]
   });
 
@@ -55,15 +41,13 @@ const IntakeForm = ({ onSubmit }) => {
 
   const calculateProgress = () => {
     const requiredFields = [
-      formData.firstName,
-      formData.surname,
+      formData.fullName,
       formData.email,
       formData.phone,
-      formData.intention.length > 0,
-      formData.selectedFrequencies.length > 0,
-      formData.healthConcerns.length > 0, // Health concerns now required
+      formData.primaryGoals.length > 0,
+      formData.healthConcerns.length > 0,
       formData.consentGiven,
-      formData.signature
+      formData.therapistSignature
     ];
 
     const filled = requiredFields.filter(Boolean).length;
@@ -89,27 +73,11 @@ const IntakeForm = ({ onSubmit }) => {
     });
   };
 
-  const handleFrequencySelection = (value) => {
-    setFormData(prev => {
-      const current = prev.selectedFrequencies || [];
-
-      if (current.includes(value)) {
-        return {
-          ...prev,
-          selectedFrequencies: current.filter(item => item !== value)
-        };
-      }
-
-      if (current.length >= 3) {
-        alert('Please select only 3 priorities');
-        return prev;
-      }
-
-      return {
-        ...prev,
-        selectedFrequencies: [...current, value]
-      };
-    });
+  const handleSliderChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: parseInt(value)
+    }));
   };
 
   const showContraindicationInfo = (e, key) => {
@@ -124,70 +92,18 @@ const IntakeForm = ({ onSubmit }) => {
     setModalInfo(null);
   };
 
-  // Signature pad functions
-  const startDrawing = (e) => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    setIsDrawing(true);
-    ctx.beginPath();
-
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setSignatureEmpty(false);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setSignatureEmpty(true);
-    setFormData(prev => ({ ...prev, signature: '' }));
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
     // Validation
-    if (formData.selectedFrequencies.length === 0) {
-      alert('Please select at least one priority frequency');
+    if (formData.primaryGoals.length === 0) {
+      alert('Please select at least one primary goal');
       return;
     }
 
     // Health concerns validation - now required
     if (formData.healthConcerns.length === 0) {
-      alert('Please complete the Health & Comfort Check section');
+      alert('Please complete the Safety Screen section');
       return;
     }
 
@@ -207,23 +123,19 @@ const IntakeForm = ({ onSubmit }) => {
       return;
     }
 
-    if (signatureEmpty) {
-      alert('Please provide your signature');
+    if (!formData.therapistSignature.trim()) {
+      alert('Please provide therapist signature');
       return;
     }
 
-    // Convert signature canvas to base64
-    const canvas = signatureCanvasRef.current;
-    const signatureDataUrl = canvas.toDataURL();
-
-    onSubmit({ ...formData, signature: signatureDataUrl });
+    onSubmit(formData);
   };
 
   return (
     <div className="intake-form-container">
       <div className="form-header">
-        <h2>Client Intake Form</h2>
-        <p>Help us determine your optimal Solfeggio frequency profile</p>
+        <h2>Vibroacoustic Session – Physical & Emotional Intake</h2>
+        <p>Help us understand your needs for optimal therapy</p>
       </div>
 
       <div className="progress-bar">
@@ -231,184 +143,170 @@ const IntakeForm = ({ onSubmit }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="intake-form">
-        {/* Basic Info */}
+        
+        {/* Client Details */}
         <section className="form-card">
+          <h3>1. Client Details</h3>
           <div className="form-grid cols-2">
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Time</label>
-              <input
-                type="time"
-                name="time"
-                value={formData.time}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>First Name</label>
+            <div>
+              <label htmlFor="fullName">Full Name *</label>
               <input
                 type="text"
-                name="firstName"
-                value={formData.firstName}
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
                 onChange={handleInputChange}
-                placeholder="First name"
                 required
               />
             </div>
-            <div className="form-group">
-              <label>Surname</label>
-              <input
-                type="text"
-                name="surname"
-                value={formData.surname}
-                onChange={handleInputChange}
-                placeholder="Last name"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="Your contact number"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="your@email.com"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Date of Birth</label>
+            <div>
+              <label htmlFor="dateOfBirth">Date of Birth</label>
               <input
                 type="date"
+                id="dateOfBirth"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleInputChange}
               />
             </div>
-            <div className="form-group">
-              <label>Gender</label>
-              <select name="gender" value={formData.gender} onChange={handleInputChange}>
-                <option value="">Prefer not to say</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Non-binary">Non-binary</option>
-                <option value="Other">Other</option>
-              </select>
+          </div>
+          <div className="form-grid cols-2">
+            <div>
+              <label htmlFor="phone">Phone *</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="email">Email *</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
+          <div className="form-grid cols-2">
+            <div>
+              <label htmlFor="todaysDate">Today's Date</label>
+              <input
+                type="date"
+                id="todaysDate"
+                name="todaysDate"
+                value={formData.todaysDate}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="practitioner">Practitioner</label>
+              <input
+                type="text"
+                id="practitioner"
+                name="practitioner"
+                value={formData.practitioner}
+                onChange={handleInputChange}
+              />
             </div>
           </div>
         </section>
 
-        {/* Session Intention */}
+        {/* Primary Goals */}
         <section className="form-card">
-          <h3>1. Session Intention</h3>
-          <p className="form-help">Select the primary focus (you may choose more than one)</p>
+          <h3>2. Primary Goals</h3>
           <div className="chips">
-            {['stress', 'anxiety', 'pain', 'sleep', 'emotional', 'spiritual', 'clarity', 'energy'].map(intent => (
-              <label key={intent} className="chip">
+            {[
+              'Reduce pain/discomfort (specify area)',
+              'Lower stress/anxiety / calm the nervous system',
+              'Improve sleep quality / ease insomnia',
+              'Ease fibromyalgia symptoms',
+              'Support movement ease',
+              'Improve mental clarity/focus',
+              'General relaxation / recovery'
+            ].map(goal => (
+              <label key={goal} className="chip">
                 <input
                   type="checkbox"
-                  checked={formData.intention.includes(intent)}
-                  onChange={() => handleCheckboxGroup('intention', intent)}
+                  checked={formData.primaryGoals.includes(goal)}
+                  onChange={() => handleCheckboxGroup('primaryGoals', goal)}
                 />
-                {intent.charAt(0).toUpperCase() + intent.slice(1)} {intent === 'anxiety' && '/ Overthinking'} {intent === 'pain' && '/ Tension'} {intent === 'sleep' && '/ Fatigue'}
+                <strong>{goal}</strong>
               </label>
             ))}
           </div>
-          <div className="form-group" style={{ marginTop: '16px' }}>
-            <label>Briefly describe your goal or what you'd like to shift:</label>
-            <textarea
-              name="goalDescription"
-              value={formData.goalDescription}
-              onChange={handleInputChange}
-              placeholder="What brings you here today?"
+        </section>
+
+        {/* Symptom Snapshot */}
+        <section className="form-card">
+          <h3>3. Symptom Snapshot (past 7 days)</h3>
+          <div className="slider-group">
+            <label>Pain (0–10): {formData.painLevel}</label>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              value={formData.painLevel}
+              onChange={(e) => handleSliderChange('painLevel', e.target.value)}
+              className="slider"
             />
           </div>
-        </section>
-
-        {/* Energy Profile */}
-        <section className="form-card">
-          <h3>2. Energy & Frequency Profile</h3>
-          <p className="form-help">How do you feel today? (Scale 1-10)</p>
-          <div className="energy-grid">
-            {[
-              { key: 'physicalEnergy', label: 'Physical Energy' },
-              { key: 'emotionalBalance', label: 'Emotional Balance' },
-              { key: 'mentalClarity', label: 'Mental Clarity' },
-              { key: 'spiritualConnection', label: 'Spiritual Connection' }
-            ].map(({ key, label }) => (
-              <div key={key} className="energy-row">
-                <label>{label}</label>
-                <div className="energy-slider">
-                  <span className="muted">Low</span>
+          <div className="slider-group">
+            <label>Stress/Anxiety (0–10): {formData.stressAnxietyLevel}</label>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              value={formData.stressAnxietyLevel}
+              onChange={(e) => handleSliderChange('stressAnxietyLevel', e.target.value)}
+              className="slider"
+            />
+          </div>
+          <div className="slider-group">
+            <label>Sleep Quality (1–5): {formData.sleepQuality}</label>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={formData.sleepQuality}
+              onChange={(e) => handleSliderChange('sleepQuality', e.target.value)}
+              className="slider"
+            />
+          </div>
+          <div style={{ marginTop: '16px' }}>
+            <label>Main Pain Areas</label>
+            <div className="chips">
+              {[
+                'Neck',
+                'Shoulders',
+                'Lower back',
+                'Hips',
+                'Knees',
+                'Headaches/Migraines',
+                'Widespread (fibromyalgia)'
+              ].map(area => (
+                <label key={area} className="chip">
                   <input
-                    type="range"
-                    name={key}
-                    min="1"
-                    max="10"
-                    value={formData[key]}
-                    onChange={handleInputChange}
+                    type="checkbox"
+                    checked={formData.mainPainAreas.includes(area)}
+                    onChange={() => handleCheckboxGroup('mainPainAreas', area)}
                   />
-                  <span className="muted">High</span>
-                  <output className="energy-value">{formData[key]}</output>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="frequency-instruction">
-            From the checkboxes below select the three that you believe are a priority for you
-            (Don't over-think this - just click the first three that attracts your attention)
-          </p>
-          <div className="frequency-grid">
-            {[
-              { value: '174', label: 'Safety • Pain relief • Grounding' },
-              { value: '285', label: 'Repair • Regeneration • Recovery' },
-              { value: '396', label: 'Release fear • Root stability' },
-              { value: '417', label: 'Transmute past • Change' },
-              { value: '528', label: 'Love • DNA harmony • Vitality' },
-              { value: '639', label: 'Heart harmony • Relationships' },
-              { value: '741', label: 'Detox • Clarity • Truth' },
-              { value: '852', label: 'Intuition • Spiritual clarity' },
-              { value: '963', label: 'Oneness • Crown awakening' }
-            ].map(freq => (
-              <label key={freq.value} className="frequency-option">
-                <input
-                  type="checkbox"
-                  checked={formData.selectedFrequencies.includes(freq.value)}
-                  onChange={() => handleFrequencySelection(freq.value)}
-                />
-                <strong>{freq.label}</strong>
-              </label>
-            ))}
+                  <strong>{area}</strong>
+                </label>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Health Check */}
+        {/* Safety Screen */}
         <section className="form-card">
-          <h3>3. Health & Comfort Check <span style={{color: 'red'}}>*</span></h3>
-          <p className="form-help">Please check any that apply (required):</p>
+          <h3>4. Safety Screen <span style={{color: 'red'}}>*</span></h3>
           <div className="chips">
             {[
               { value: 'pacemaker', label: 'Pacemakers/Implants' },
@@ -420,7 +318,7 @@ const IntakeForm = ({ onSubmit }) => {
               { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
               { value: 'psychotic', label: 'Psychotic Conditions' },
               { value: 'pregnancy', label: 'Pregnancy' },
-              { value: 'chemotherapy', label: 'Chemotherapy and Active Cancer Treatment' },
+              { value: 'chemotherapy', label: 'Chemotherapy / Active Cancer Treatment' },
               { value: 'none', label: 'None apply' }
             ].map(concern => (
               <label key={concern.value} className="chip health-chip">
@@ -438,80 +336,22 @@ const IntakeForm = ({ onSubmit }) => {
               </label>
             ))}
           </div>
-          <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
-            <div className="form-group">
-              <label>Current medications / conditions</label>
-              <textarea
-                name="medications"
-                value={formData.medications}
-                onChange={handleInputChange}
-                placeholder="Brief list"
-              />
-            </div>
-            <div className="form-group">
-              <label>Preferred vibration intensity</label>
-              <select
-                name="vibrationIntensity"
-                value={formData.vibrationIntensity}
-                onChange={handleInputChange}
-              >
-                <option value="gentle">Gentle</option>
-                <option value="moderate">Moderate</option>
-                <option value="deep">Deep</option>
-              </select>
-            </div>
-          </div>
         </section>
 
-        {/* Emotional Indicators */}
-        <section className="form-card">
-          <h3>4. Emotional / Spiritual Indicators</h3>
-          <p className="form-help">Circle any that feel active:</p>
-          <div className="chips">
-            {[
-              { value: 'fear', label: 'Fear / Guilt' },
-              { value: 'grief', label: 'Grief / Heartache' },
-              { value: 'confusion', label: 'Confusion' },
-              { value: 'doubt', label: 'Self-Doubt' },
-              { value: 'loneliness', label: 'Loneliness' },
-              { value: 'disconnection', label: 'Disconnection' },
-              { value: 'depression', label: 'Depression' }
-            ].map(emotion => (
-              <label key={emotion.value} className="chip">
-                <input
-                  type="checkbox"
-                  checked={formData.emotionalIndicators.includes(emotion.value)}
-                  onChange={() => handleCheckboxGroup('emotionalIndicators', emotion.value)}
-                />
-                {emotion.label}
-              </label>
-            ))}
-          </div>
-          <div className="form-group" style={{ marginTop: '16px' }}>
-            <label>Any intuitive messages, dreams, or intentions to honour today?</label>
-            <textarea
-              name="intuitiveMessages"
-              value={formData.intuitiveMessages}
-              onChange={handleInputChange}
-              placeholder="Optional"
-            />
-          </div>
-        </section>
-
-        {/* Consent */}
+        {/* Consent & Acknowledgement */}
         <section className="form-card">
           <h3>5. Consent & Acknowledgement</h3>
           <div className="consent-notice">
-            <p>I understand that Vibroacoustic Therapy involves the use of low-frequency sound and gentle vibration to promote relaxation and balance. I acknowledge and agree that:</p>
+            <p>I understand that Vibroacoustic Therapy involves low-frequency sound and vibration to promote relaxation and balance. I acknowledge that:</p>
             <ul style={{ marginLeft: '20px', lineHeight: '1.8', marginTop: '12px' }}>
-              <li>The session is complementary and non-medical, not intended to diagnose, treat, cure, or prevent disease.</li>
-              <li>The practitioner is not a medical doctor or psychotherapist and makes no guarantees of outcome.</li>
-              <li>I have disclosed all relevant health information to ensure safe use of the Vibroacoustic Bed.</li>
-              <li>I will inform the practitioner immediately of any discomfort, dizziness, or emotional distress.</li>
-              <li>I accept full responsibility for my participation and any responses—physical, mental, or emotional—that may occur.</li>
-              <li>All shared information is confidential, except where disclosure is required by law.</li>
-              <li>I release the practitioner and facility from any liability arising from participation, except where prohibited by law.</li>
-              <li>I confirm I am of sound mind and legal age to give informed consent.</li>
+              <li>The session is complementary and non-medical, not intended to diagnose, treat, or cure disease.</li>
+              <li>The practitioner is not a doctor or psychotherapist and makes no guarantees of outcome.</li>
+              <li>I have disclosed all relevant health information for safe use of the bed.</li>
+              <li>I will inform the practitioner of any discomfort or distress.</li>
+              <li>I accept full responsibility for my participation and responses.</li>
+              <li>All information shared is confidential except where disclosure is required by law.</li>
+              <li>I release the practitioner and facility from liability arising from participation.</li>
+              <li>I confirm I am of sound mind and legal age to give consent.</li>
             </ul>
           </div>
           <div className="consent-check">
@@ -528,44 +368,23 @@ const IntakeForm = ({ onSubmit }) => {
             </label>
           </div>
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
-            <div className="form-group">
-              <label>Client Signature</label>
-              <div style={{ border: '2px solid #ddd', borderRadius: '8px', background: 'white' }}>
-                <canvas
-                  ref={signatureCanvasRef}
-                  width={400}
-                  height={150}
-                  style={{ display: 'block', cursor: 'crosshair', touchAction: 'none' }}
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={startDrawing}
-                  onTouchMove={draw}
-                  onTouchEnd={stopDrawing}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={clearSignature}
-                style={{
-                  marginTop: '8px',
-                  padding: '6px 12px',
-                  background: '#e74c3c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Clear Signature
-              </button>
+            <div>
+              <label htmlFor="therapistSignature">Therapist Signature *</label>
+              <input
+                type="text"
+                id="therapistSignature"
+                name="therapistSignature"
+                value={formData.therapistSignature}
+                onChange={handleInputChange}
+                placeholder="Therapist name or signature"
+                required
+              />
             </div>
-            <div className="form-group">
-              <label>Signature Date</label>
+            <div>
+              <label htmlFor="signatureDate">Date of Signature</label>
               <input
                 type="date"
+                id="signatureDate"
                 name="signatureDate"
                 value={formData.signatureDate}
                 onChange={handleInputChange}
@@ -576,11 +395,8 @@ const IntakeForm = ({ onSubmit }) => {
         </section>
 
         <div className="form-navigation">
-          <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
-            ← Start Over
-          </button>
-          <button type="submit" className="btn">
-            Start Session →
+          <button type="submit" className="btn btn-primary">
+            Submit Intake Form
           </button>
         </div>
       </form>
@@ -589,9 +405,13 @@ const IntakeForm = ({ onSubmit }) => {
       {showInfoModal && modalInfo && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h4>{modalInfo.title}</h4>
-            <p>{modalInfo.text}</p>
-            <button className="btn" onClick={closeModal}>Close</button>
+            <div className="modal-header">
+              <h3>{modalInfo.title}</h3>
+              <button className="modal-close" onClick={closeModal}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>{modalInfo.text}</p>
+            </div>
           </div>
         </div>
       )}
