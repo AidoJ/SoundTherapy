@@ -148,7 +148,7 @@ const IntakeForm = ({ onSubmit }) => {
         <section className="form-card">
           <h3>1. Client Details</h3>
           <div className="form-grid cols-2">
-            <div>
+            <div className="form-group">
               <label htmlFor="fullName">Full Name *</label>
               <input
                 type="text"
@@ -159,7 +159,7 @@ const IntakeForm = ({ onSubmit }) => {
                 required
               />
             </div>
-            <div>
+            <div className="form-group">
               <label htmlFor="dateOfBirth">Date of Birth</label>
               <input
                 type="date"
@@ -171,7 +171,7 @@ const IntakeForm = ({ onSubmit }) => {
             </div>
           </div>
           <div className="form-grid cols-2">
-            <div>
+            <div className="form-group">
               <label htmlFor="phone">Phone *</label>
               <input
                 type="tel"
@@ -182,7 +182,7 @@ const IntakeForm = ({ onSubmit }) => {
                 required
               />
             </div>
-            <div>
+            <div className="form-group">
               <label htmlFor="email">Email *</label>
               <input
                 type="email"
@@ -195,7 +195,7 @@ const IntakeForm = ({ onSubmit }) => {
             </div>
           </div>
           <div className="form-grid cols-2">
-            <div>
+            <div className="form-group">
               <label htmlFor="todaysDate">Today's Date</label>
               <input
                 type="date"
@@ -205,7 +205,7 @@ const IntakeForm = ({ onSubmit }) => {
                 onChange={handleInputChange}
               />
             </div>
-            <div>
+            <div className="form-group">
               <label htmlFor="practitioner">Practitioner</label>
               <input
                 type="text"
@@ -246,40 +246,54 @@ const IntakeForm = ({ onSubmit }) => {
         {/* Symptom Snapshot */}
         <section className="form-card">
           <h3>3. Symptom Snapshot (past 7 days)</h3>
-          <div className="slider-group">
-            <label>Pain (0–10): {formData.painLevel}</label>
-            <input
-              type="range"
-              min="0"
-              max="10"
-              value={formData.painLevel}
-              onChange={(e) => handleSliderChange('painLevel', e.target.value)}
-              className="slider"
-            />
+          <div className="energy-grid">
+            <div className="energy-row">
+              <label>Pain Level</label>
+              <div className="energy-slider">
+                <span className="muted">0</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={formData.painLevel}
+                  onChange={(e) => handleSliderChange('painLevel', e.target.value)}
+                />
+                <span className="muted">10</span>
+                <span className="energy-value">{formData.painLevel}</span>
+              </div>
+            </div>
+            <div className="energy-row">
+              <label>Stress/Anxiety Level</label>
+              <div className="energy-slider">
+                <span className="muted">0</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={formData.stressAnxietyLevel}
+                  onChange={(e) => handleSliderChange('stressAnxietyLevel', e.target.value)}
+                />
+                <span className="muted">10</span>
+                <span className="energy-value">{formData.stressAnxietyLevel}</span>
+              </div>
+            </div>
+            <div className="energy-row">
+              <label>Sleep Quality</label>
+              <div className="energy-slider">
+                <span className="muted">1</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  value={formData.sleepQuality}
+                  onChange={(e) => handleSliderChange('sleepQuality', e.target.value)}
+                />
+                <span className="muted">5</span>
+                <span className="energy-value">{formData.sleepQuality}</span>
+              </div>
+            </div>
           </div>
-          <div className="slider-group">
-            <label>Stress/Anxiety (0–10): {formData.stressAnxietyLevel}</label>
-            <input
-              type="range"
-              min="0"
-              max="10"
-              value={formData.stressAnxietyLevel}
-              onChange={(e) => handleSliderChange('stressAnxietyLevel', e.target.value)}
-              className="slider"
-            />
-          </div>
-          <div className="slider-group">
-            <label>Sleep Quality (1–5): {formData.sleepQuality}</label>
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={formData.sleepQuality}
-              onChange={(e) => handleSliderChange('sleepQuality', e.target.value)}
-              className="slider"
-            />
-          </div>
-          <div style={{ marginTop: '16px' }}>
+          <div style={{ marginTop: '24px' }}>
             <label>Main Pain Areas</label>
             <div className="chips">
               {[
@@ -368,7 +382,7 @@ const IntakeForm = ({ onSubmit }) => {
             </label>
           </div>
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
-            <div>
+            <div className="form-group">
               <label htmlFor="therapistSignature">Therapist Signature *</label>
               <input
                 type="text"
@@ -380,7 +394,7 @@ const IntakeForm = ({ onSubmit }) => {
                 required
               />
             </div>
-            <div>
+            <div className="form-group">
               <label htmlFor="signatureDate">Date of Signature</label>
               <input
                 type="date"
