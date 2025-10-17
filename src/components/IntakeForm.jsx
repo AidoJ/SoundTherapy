@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
-const IntakeForm = ({ onSubmit }) => {
+const IntakeForm = ({ onSubmit, bookingData }) => {
   const [formData, setFormData] = useState({
     // Client Details
     fullName: '',
@@ -44,6 +44,18 @@ const IntakeForm = ({ onSubmit }) => {
   useEffect(() => {
     calculateProgress();
   }, [formData]);
+
+  // Auto-populate from booking data
+  useEffect(() => {
+    if (bookingData) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: `${bookingData.firstName} ${bookingData.surname}`,
+        phone: bookingData.phone,
+        email: bookingData.email
+      }));
+    }
+  }, [bookingData]);
 
   const calculateProgress = () => {
     const requiredFields = [

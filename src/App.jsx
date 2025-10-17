@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import WelcomeScreen from './components/WelcomeScreen';
+import QuickBookingForm from './components/QuickBookingForm';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
 import { matchAudioFile, getAudioFileForFrequency } from './services/audioMatcher';
@@ -8,12 +9,24 @@ import { saveClient, saveSession, getClientByEmail } from './services/supabaseCl
 import './App.css';
 
 function App() {
-  const [screen, setScreen] = useState('welcome'); // 'welcome', 'form', 'results'
+  const [screen, setScreen] = useState('welcome'); // 'welcome', 'booking', 'form', 'results'
   const [recommendedFrequency, setRecommendedFrequency] = useState(null);
   const [sessionData, setSessionData] = useState(null);
+  const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleStart = () => {
+    setScreen('booking');
+  };
+
+  const handleBookingComplete = (booking) => {
+    setBookingData(booking);
+    // For now, go directly to form. Later we'll add booking management
+    setScreen('form');
+  };
+
+  const handleRequireFullIntake = (healthData) => {
+    // If contraindications found, go directly to full intake form
     setScreen('form');
   };
 
@@ -113,6 +126,7 @@ function App() {
     setScreen('welcome');
     setRecommendedFrequency(null);
     setSessionData(null);
+    setBookingData(null);
   };
 
   return (
@@ -120,10 +134,20 @@ function App() {
       <div className="container">
         {screen === 'welcome' && <WelcomeScreen onStart={handleStart} />}
 
+        {screen === 'booking' && (
+          <QuickBookingForm 
+            onBookingComplete={handleBookingComplete}
+            onRequireFullIntake={handleRequireFullIntake}
+          />
+        )}
+
         {screen === 'form' && (
           <>
             {loading && <div className="loading-overlay">Processing...</div>}
-            <IntakeForm onSubmit={handleFormSubmit} />
+            <IntakeForm 
+              onSubmit={handleFormSubmit}
+              bookingData={bookingData}
+            />
           </>
         )}
 

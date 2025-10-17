@@ -1,0 +1,408 @@
+/* Quick Booking Form - Mobile First Design */
+.quick-booking-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  background: #f8faf9;
+  min-height: 100vh;
+}
+
+.booking-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #008e8c, #6bd6c8);
+  color: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 142, 140, 0.2);
+}
+
+.booking-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.booking-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 16px;
+}
+
+/* Health Gate Styles */
+.health-gate {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.health-question {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 2px solid #e0d5ed;
+  border-radius: 12px;
+  background: #fdfcfe;
+  transition: all 0.2s ease;
+}
+
+.health-question:hover {
+  border-color: #008e8c;
+  background: #f0f9f8;
+}
+
+.health-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.health-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #008e8c;
+  cursor: pointer;
+}
+
+.health-label strong {
+  color: #1e2a2a;
+  font-weight: 600;
+}
+
+.health-gate-actions {
+  text-align: center;
+  margin-top: 32px;
+}
+
+/* Booking Form Styles */
+.booking-form {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-section {
+  margin-bottom: 32px;
+}
+
+.form-section h3 {
+  color: #008e8c;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e0d5ed;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e2a2a;
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #e0d5ed;
+  border-radius: 12px;
+  background: #fdfcfe;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #008e8c;
+  box-shadow: 0 0 0 3px rgba(0, 142, 140, 0.1);
+}
+
+.form-group input::placeholder {
+  color: #5e6b6b;
+  opacity: 0.7;
+}
+
+/* Time Slots */
+.time-slots {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .time-slots {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.time-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0d5ed;
+  border-radius: 12px;
+  background: #fdfcfe;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-slot:hover {
+  border-color: #008e8c;
+  background: #f0f9f8;
+}
+
+.time-slot input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #008e8c;
+  cursor: pointer;
+}
+
+.slot-time {
+  font-weight: 600;
+  color: #1e2a2a;
+  font-size: 14px;
+}
+
+.time-slot:has(input:checked) {
+  border-color: #008e8c;
+  background: #e7f7f4;
+}
+
+/* Payment Options */
+.payment-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .payment-options {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0d5ed;
+  border-radius: 12px;
+  background: #fdfcfe;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  justify-content: center;
+}
+
+.payment-option:hover {
+  border-color: #008e8c;
+  background: #f0f9f8;
+}
+
+.payment-option input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #008e8c;
+  cursor: pointer;
+}
+
+.payment-option span {
+  font-weight: 600;
+  color: #1e2a2a;
+  font-size: 14px;
+}
+
+.payment-option:has(input:checked) {
+  border-color: #008e8c;
+  background: #e7f7f4;
+}
+
+/* Buttons */
+.btn {
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #008e8c, #6bd6c8);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 142, 140, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 142, 140, 0.4);
+}
+
+.btn-secondary {
+  background: #e9f6f4;
+  color: #0a6e6a;
+  border: 2px solid #d4efea;
+}
+
+.btn-secondary:hover {
+  background: #d4efea;
+  transform: translateY(-1px);
+}
+
+.btn-large {
+  font-size: 18px;
+  padding: 20px 32px;
+  min-height: 64px;
+}
+
+.booking-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.booking-actions .btn {
+  flex: 1;
+}
+
+/* Confirmation Styles */
+.success-icon {
+  width: 64px;
+  height: 64px;
+  background: #0f766e;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  margin: 16px auto;
+}
+
+.confirmation-details {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.confirmation-section {
+  margin-bottom: 24px;
+}
+
+.confirmation-section h3 {
+  color: #008e8c;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.confirmation-section p {
+  margin: 8px 0;
+  font-size: 16px;
+  color: #1e2a2a;
+}
+
+.confirmation-section strong {
+  color: #008e8c;
+  font-weight: 600;
+}
+
+.confirmation-actions {
+  text-align: center;
+  margin-top: 32px;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 480px) {
+  .quick-booking-container {
+    padding: 12px;
+  }
+  
+  .booking-header {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .booking-header h2 {
+    font-size: 20px;
+  }
+  
+  .health-gate,
+  .booking-form,
+  .confirmation-details {
+    padding: 16px;
+  }
+  
+  .btn {
+    padding: 14px 20px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+  
+  .btn-large {
+    font-size: 16px;
+    padding: 16px 24px;
+    min-height: 56px;
+  }
+  
+  .booking-actions {
+    flex-direction: column;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .health-question,
+  .time-slot,
+  .payment-option {
+    min-height: 56px;
+  }
+  
+  .btn {
+    min-height: 56px;
+  }
+  
+  .form-group input,
+  .form-group select {
+    min-height: 56px;
+  }
+}
