@@ -7,12 +7,12 @@ const BookingList = ({ onStartSession }) => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newBooking, setNewBooking] = useState({
-    firstName: '',
+    firstname: '',
     surname: '',
     phone: '',
     email: '',
     duration: 30,
-    selectedSlot: '',
+    selectedslot: '',
     notes: ''
   });
 
@@ -26,7 +26,7 @@ const BookingList = ({ onStartSession }) => {
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
-        .order('selectedSlot', { ascending: true });
+        .order('selectedslot', { ascending: true });
 
       if (error) {
         console.error('Error loading bookings:', error);
@@ -51,7 +51,7 @@ const BookingList = ({ onStartSession }) => {
     try {
       const { error } = await supabase
         .from('bookings')
-        .update({ bookingStatus: newStatus })
+        .update({ bookingstatus: newStatus })
         .eq('id', bookingId);
 
       if (error) {
@@ -73,11 +73,11 @@ const BookingList = ({ onStartSession }) => {
     try {
       const bookingData = {
         ...newBooking,
-        userID: `user_${Date.now()}`,
-        serviceType: 'Sound Healing Session',
-        paymentMethod: 'Stripe',
-        paymentStatus: 'paid',
-        bookingStatus: 'confirmed'
+        userid: `user_${Date.now()}`,
+        servicetype: 'Sound Healing Session',
+        paymentmethod: 'Stripe',
+        paymentstatus: 'paid',
+        bookingstatus: 'confirmed'
       };
 
       const { error } = await supabase
@@ -95,12 +95,12 @@ const BookingList = ({ onStartSession }) => {
         alert('Booking added successfully!');
         setShowAddForm(false);
         setNewBooking({
-          firstName: '',
+          firstname: '',
           surname: '',
           phone: '',
           email: '',
           duration: 30,
-          selectedSlot: '',
+          selectedslot: '',
           notes: ''
         });
         loadBookings();
@@ -115,7 +115,7 @@ const BookingList = ({ onStartSession }) => {
 
   const handleStartSession = (booking) => {
     const bookingData = {
-      firstName: booking.firstName,
+      firstName: booking.firstname,
       surname: booking.surname,
       phone: booking.phone,
       email: booking.email
@@ -185,7 +185,7 @@ const BookingList = ({ onStartSession }) => {
                   <tr key={booking.id}>
                     <td>
                       <div className="client-info">
-                        <strong>{booking.firstName} {booking.surname}</strong>
+                        <strong>{booking.firstname} {booking.surname}</strong>
                         <div className="contact-info">
                           {booking.phone} | {booking.email}
                         </div>
@@ -193,19 +193,19 @@ const BookingList = ({ onStartSession }) => {
                     </td>
                     <td>
                       <div className="datetime-info">
-                        <div>{formatDate(booking.selectedSlot)}</div>
-                        <div>{formatTime(booking.selectedSlot)}</div>
+                        <div>{formatDate(booking.selectedslot)}</div>
+                        <div>{formatTime(booking.selectedslot)}</div>
                       </div>
                     </td>
                     <td>{booking.duration} min</td>
                     <td>
-                      <span className={`status-badge ${booking.bookingStatus}`}>
-                        {booking.bookingStatus}
+                      <span className={`status-badge ${booking.bookingstatus}`}>
+                        {booking.bookingstatus}
                       </span>
                     </td>
                     <td>
                       <div className="actions">
-                        {booking.bookingStatus === 'confirmed' && (
+                        {booking.bookingstatus === 'confirmed' && (
                           <button
                             className="btn-start"
                             onClick={() => handleStartSession(booking)}
@@ -214,7 +214,7 @@ const BookingList = ({ onStartSession }) => {
                           </button>
                         )}
                         
-                        {booking.bookingStatus === 'pending' && (
+                        {booking.bookingstatus === 'pending' && (
                           <button
                             className="btn-confirm"
                             onClick={() => updateBookingStatus(booking.id, 'confirmed')}
@@ -223,7 +223,7 @@ const BookingList = ({ onStartSession }) => {
                           </button>
                         )}
                         
-                        {booking.bookingStatus === 'in_progress' && (
+                        {booking.bookingstatus === 'in_progress' && (
                           <button
                             className="btn-complete"
                             onClick={() => updateBookingStatus(booking.id, 'completed')}
@@ -259,8 +259,8 @@ const BookingList = ({ onStartSession }) => {
                   type="text"
                   placeholder="First Name"
                   required
-                  value={newBooking.firstName}
-                  onChange={e => setNewBooking({...newBooking, firstName: e.target.value})}
+                  value={newBooking.firstname}
+                  onChange={e => setNewBooking({...newBooking, firstname: e.target.value})}
                 />
                 <input
                   type="text"
@@ -293,8 +293,8 @@ const BookingList = ({ onStartSession }) => {
                   type="datetime-local"
                   placeholder="Date & Time"
                   required
-                  value={newBooking.selectedSlot}
-                  onChange={e => setNewBooking({...newBooking, selectedSlot: e.target.value})}
+                  value={newBooking.selectedslot}
+                  onChange={e => setNewBooking({...newBooking, selectedslot: e.target.value})}
                 />
                 <select
                   value={newBooking.duration}
