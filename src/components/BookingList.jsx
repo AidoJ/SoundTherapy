@@ -30,7 +30,12 @@ const BookingList = ({ onStartSession }) => {
 
       if (error) {
         console.error('Error loading bookings:', error);
-        setBookings([]);
+        if (error.code === 'PGRST116') {
+          // Table doesn't exist - show message to create it
+          setBookings([]);
+        } else {
+          setBookings([]);
+        }
       } else {
         setBookings(data || []);
       }
@@ -81,7 +86,11 @@ const BookingList = ({ onStartSession }) => {
 
       if (error) {
         console.error('Error adding booking:', error);
-        alert('Error adding booking: ' + error.message);
+        if (error.code === 'PGRST116') {
+          alert('Bookings table does not exist. Please create it first using the SQL script in database/bookings_schema.sql');
+        } else {
+          alert('Error adding booking: ' + error.message);
+        }
       } else {
         alert('Booking added successfully!');
         setShowAddForm(false);
@@ -151,7 +160,14 @@ const BookingList = ({ onStartSession }) => {
         <div className="bookings-table">
           {bookings.length === 0 ? (
             <div className="no-bookings">
-              <p>No bookings found. Add your first booking!</p>
+              <p>No bookings found.</p>
+              <p><strong>First, create the bookings table in Supabase:</strong></p>
+              <ol>
+                <li>Go to your Supabase Dashboard</li>
+                <li>Click on "SQL Editor"</li>
+                <li>Run the SQL script from: <code>database/bookings_schema.sql</code></li>
+                <li>Refresh this page</li>
+              </ol>
             </div>
           ) : (
             <table>
