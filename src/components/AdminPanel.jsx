@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
+import BookingList from './BookingList';
 import './AdminPanel.css';
 
-const AdminPanel = ({ onLogout }) => {
+const AdminPanel = ({ onLogout, onStartSession }) => {
   const [activeTab, setActiveTab] = useState('clients');
   const [clients, setClients] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -407,6 +408,12 @@ const AdminPanel = ({ onLogout }) => {
         >
           Audio Files
         </button>
+        <button
+          className={activeTab === 'bookings' ? 'active' : ''}
+          onClick={() => setActiveTab('bookings')}
+        >
+          Bookings
+        </button>
       </div>
 
       <div className="admin-content">
@@ -596,6 +603,13 @@ const AdminPanel = ({ onLogout }) => {
                 </li>
               </ol>
             </div>
+          </div>
+        )}
+
+        {/* BOOKINGS TAB */}
+        {activeTab === 'bookings' && (
+          <div className="tab-content">
+            <BookingList onStartSession={onStartSession} />
           </div>
         )}
       </div>

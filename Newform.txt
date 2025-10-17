@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibroacoustic Session – Physical & Emotional Intake</title>
+<style>
+  :root {
+    --teal: #008e8c;
+    --aqua: #e7f7f4;
+    --ink: #333;
+    --shadow: 0 4px 10px rgba(0,0,0,0.08);
+  }
+  body {
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    background: #f8faf9;
+    color: var(--ink);
+  }
+  header {
+    background: var(--teal);
+    color: #fff;
+    padding: 1.4rem 2rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  section.card {
+    background: #fff;
+    margin: 20px auto;
+    max-width: 800px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 24px 32px;
+  }
+  h2 {
+    color: var(--teal);
+    margin-bottom: 10px;
+  }
+  label {
+    display: block;
+    margin-top: 8px;
+    font-weight: 500;
+  }
+  input[type="text"], input[type="date"], input[type="email"], input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+  .slider {
+    width: 100%;
+  }
+  .chips label {
+    display: flex;
+    align-items: center;
+    margin: 6px 0;
+  }
+  .info {
+    display:inline-flex;justify-content:center;align-items:center;width:18px;height:18px;
+    border-radius:999px;margin-left:6px;background:#e7f7f4;border:1px solid #cfe7e4;
+    color:#0a6e6a;font-weight:800;font-size:12px;cursor:pointer;position:relative;
+  }
+  .info .tooltip {
+    display:none;position:absolute;top:22px;left:0;z-index:30;min-width:240px;max-width:320px;
+    padding:10px 12px;background:#fff;border:1px solid #dbeeee;border-radius:12px;
+    box-shadow:var(--shadow);color:#007e8c;font-weight:400;line-height:1.45;
+  }
+  .info .tooltip::after {
+    content:"";position:absolute;top:-6px;left:12px;border-width:6px;border-style:solid;
+    border-color:transparent transparent #dbeeee transparent;
+  }
+  .info .tooltip::before {
+    content:"";position:absolute;top:-5px;left:12px;border-width:6px;border-style:solid;
+    border-color:transparent transparent #fff transparent;
+  }
+  .info:hover .tooltip, .info:focus .tooltip, .info.active .tooltip {display:block;}
+  svg {width:100%;height:auto;}
+</style>
+</head>
+<body>
+<header>Vibroacoustic Session – Physical & Emotional Intake</header>
+
+<section class="card">
+  <h2>Client Details</h2>
+  <label>Full Name</label><input type="text">
+  <label>Date of Birth</label><input type="date">
+  <label>Phone</label><input type="text">
+  <label>Email</label><input type="email">
+  <label>Today’s Date</label><input type="date">
+  <label>Practitioner</label><input type="text">
+</section>
+
+<section class="card">
+  <h2>Primary Goals</h2>
+  <div class="chips">
+    <label><input type="checkbox"> Reduce pain/discomfort (specify area)</label>
+    <label><input type="checkbox"> Lower stress/anxiety / calm the nervous system</label>
+    <label><input type="checkbox"> Improve sleep quality / ease insomnia</label>
+    <label><input type="checkbox"> Ease fibromyalgia symptoms</label>
+    <label><input type="checkbox"> Support movement ease</label>
+    <label><input type="checkbox"> Improve mental clarity/focus</label>
+    <label><input type="checkbox"> General relaxation / recovery</label>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Symptom Snapshot (past 7 days)</h2>
+  <label>Pain (0–10)</label>
+  <input type="range" min="0" max="10" class="slider">
+  <label>Stress/Anxiety (0–10)</label>
+  <input type="range" min="0" max="10" class="slider">
+  <label>Sleep Quality (1–5)</label>
+  <input type="range" min="1" max="5" class="slider">
+  <label>Main Pain Areas</label>
+  <div class="chips">
+    <label><input type="checkbox"> Neck</label>
+    <label><input type="checkbox"> Shoulders</label>
+    <label><input type="checkbox"> Lower back</label>
+    <label><input type="checkbox"> Hips</label>
+    <label><input type="checkbox"> Knees</label>
+    <label><input type="checkbox"> Headaches/Migraines</label>
+    <label><input type="checkbox"> Widespread (fibromyalgia)</label>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Safety Screen</h2>
+  <div class="chips">
+    <label><input type="checkbox"> Pacemakers/Implants <span class="info" tabindex="0">❕<span class="tooltip">Low-frequency vibration may interfere with pacemakers or implants; always obtain medical clearance.</span></span></label>
+    <label><input type="checkbox"> Deep Vein Thrombosis <span class="info" tabindex="0">❕<span class="tooltip">Vibration can increase circulation, risking clot movement; avoid until fully resolved.</span></span></label>
+    <label><input type="checkbox"> Bleeding Disorders <span class="info" tabindex="0">❕<span class="tooltip">Increased blood flow can worsen bleeding or bruising; use only under medical advice.</span></span></label>
+    <label><input type="checkbox"> Recent Surgery/Open Wounds <span class="info" tabindex="0">❕<span class="tooltip">Vibration can disturb healing tissues or sutures; wait until fully healed.</span></span></label>
+    <label><input type="checkbox"> Severe Low Blood Pressure <span class="info" tabindex="0">❕<span class="tooltip">Deep relaxation may lower BP further; monitor closely.</span></span></label>
+    <label><input type="checkbox"> Seizure Disorders <span class="info" tabindex="0">❕<span class="tooltip">Rhythmic sound/vibration may provoke episodes in sensitive individuals.</span></span></label>
+    <label><input type="checkbox"> Acute Inflammatory Conditions <span class="info" tabindex="0">❕<span class="tooltip">Added warmth/circulation may aggravate acute inflammation or pain.</span></span></label>
+    <label><input type="checkbox"> Psychotic Conditions <span class="info" tabindex="0">❕<span class="tooltip">Sensory input may intensify distress; ensure stability and support.</span></span></label>
+    <label><input type="checkbox"> Pregnancy <span class="info" tabindex="0">❕<span class="tooltip">Safety data limited; avoid abdomen/pelvis area; seek obstetric guidance.</span></span></label>
+    <label><input type="checkbox"> Chemotherapy / Active Cancer Treatment <span class="info" tabindex="0">❕<span class="tooltip">Vibration may interact with treatment or fatigue; use only under oncologist advice.</span></span></label>
+    <label><input type="checkbox"> None apply</label>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Consent & Acknowledgement</h2>
+  <p>I understand that Vibroacoustic Therapy involves low-frequency sound and vibration to promote relaxation and balance. I acknowledge that:</p>
+  <ul>
+    <li>The session is complementary and non-medical, not intended to diagnose, treat, or cure disease.</li>
+    <li>The practitioner is not a doctor or psychotherapist and makes no guarantees of outcome.</li>
+    <li>I have disclosed all relevant health information for safe use of the bed.</li>
+    <li>I will inform the practitioner of any discomfort or distress.</li>
+    <li>I accept full responsibility for my participation and responses.</li>
+    <li>All information shared is confidential except where disclosure is required by law.</li>
+    <li>I release the practitioner and facility from liability arising from participation.</li>
+    <li>I confirm I am of sound mind and legal age to give consent.</li>
+  </ul>
+  <label>Therapist Signature</label><input type="text" placeholder="Therapist name or signature">
+  <label>Date of Signature</label><input type="date">
+</section>
+
+<script>
+  // Tooltip toggling for touch devices
+  function setupTooltips(){
+    const infos=[...document.querySelectorAll('.info')];
+    function closeAll(){infos.forEach(i=>i.classList.remove('active'));};
+    infos.forEach(i=>{
+      i.addEventListener('click',e=>{
+        e.stopPropagation();
+        const active=i.classList.toggle('active');
+        if(active){infos.filter(x=>x!==i).forEach(x=>x.classList.remove('active'));}});
+      i.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();i.click();}});
+    });
+    document.addEventListener('click',closeAll);
+  }
+  setupTooltips();
+</script>
+
+</body>
+</html>
+

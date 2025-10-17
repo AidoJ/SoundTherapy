@@ -18,9 +18,15 @@ const AdminDashboard = () => {
     navigate('/');
   };
 
+  const handleStartSession = (bookingData) => {
+    // Navigate to the main app with booking data
+    // This will be handled by the main App component
+    navigate('/', { state: { bookingData } });
+  };
+
   return (
     <div>
-      <AdminPanel onLogout={handleLogout} />
+      <AdminPanel onLogout={handleLogout} onStartSession={handleStartSession} />
     </div>
   );
 };
