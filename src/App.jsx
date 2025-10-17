@@ -48,12 +48,12 @@ function App() {
       // 2. Save to Supabase
       // First, check if client exists or create new
       const clientData = {
-        firstName: formData.firstName,
-        surname: formData.surname,
+        firstName: formData.fullName.split(' ')[0] || '',
+        surname: formData.fullName.split(' ').slice(1).join(' ') || '',
         email: formData.email,
         phone: formData.phone,
         dateOfBirth: formData.dateOfBirth || null,
-        gender: formData.gender || null
+        gender: null
       };
 
       // Check if client exists
@@ -80,22 +80,22 @@ function App() {
       if (clientId) {
         const sessionData = {
           client_id: clientId,
-          session_date: formData.date,
-          session_time: formData.time,
-          intention: formData.intention,
-          goal_description: formData.goalDescription,
-          physical_energy: formData.physicalEnergy,
-          emotional_balance: formData.emotionalBalance,
-          mental_clarity: formData.mentalClarity,
-          spiritual_connection: formData.spiritualConnection,
-          selected_frequencies: formData.selectedFrequencies,
+          session_date: formData.todaysDate,
+          session_time: new Date().toLocaleTimeString(),
+          intention: formData.primaryGoals.join(', '),
+          goal_description: formData.primaryGoals.join(', '),
+          physical_energy: formData.painLevel,
+          emotional_balance: formData.stressAnxietyLevel,
+          mental_clarity: formData.sleepQuality,
+          spiritual_connection: 0,
+          selected_frequencies: [],
           health_concerns: formData.healthConcerns,
-          medications: formData.medications,
-          vibration_intensity: formData.vibrationIntensity,
-          emotional_indicators: formData.emotionalIndicators,
-          intuitive_messages: formData.intuitiveMessages,
+          medications: '',
+          vibration_intensity: 0,
+          emotional_indicators: [],
+          intuitive_messages: '',
           consent_given: formData.consentGiven,
-          signature: formData.signature,
+          signature: formData.therapistSignature,
           signature_date: formData.signatureDate,
           frequency_suggested: frequency,
           status: 'scheduled'
