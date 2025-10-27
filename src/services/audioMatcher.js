@@ -47,15 +47,29 @@ export const matchAudioFile = async (formData) => {
     };
   });
 
-  // 1. PRIMARY SCORING: Session Intentions (Highest weight: 15 points)
-  if (formData.intention && formData.intention.length > 0) {
-    formData.intention.forEach(intent => {
+  // 1. PRIMARY SCORING: Primary Goals (Highest weight: 15 points)
+  // Uses primaryGoals from new intake form
+  const goals = formData.primaryGoals || formData.intention || [];
+  if (goals && goals.length > 0) {
+    goals.forEach(goal => {
       audioFiles.forEach(audio => {
         const key = `${audio.frequency_min}-${audio.frequency_max}`;
 
-        // Check if primary_intentions array includes this intent
-        if (audio.primary_intentions && audio.primary_intentions.includes(intent)) {
+        // Check if primary_intentions array includes this goal
+        if (audio.primary_intentions && audio.primary_intentions.includes(goal)) {
           scores[key].score += 15;
+        }
+
+        // Fuzzy matching for goals that might be worded differently
+        if (audio.primary_intentions) {
+          const lowerGoal = goal.toLowerCase();
+          const matchesIntent = audio.primary_intentions.some(intent =>
+            intent.toLowerCase().includes(lowerGoal) ||
+            lowerGoal.includes(intent.toLowerCase())
+          );
+          if (matchesIntent) {
+            scores[key].score += 12;
+          }
         }
 
         // Check harmonic connections for related support (5 points)
@@ -64,8 +78,14 @@ export const matchAudioFile = async (formData) => {
             const relatedAudio = audioFiles.find(a =>
               a.frequency_min <= relatedHz && a.frequency_max >= relatedHz
             );
-            if (relatedAudio && relatedAudio.primary_intentions?.includes(intent)) {
-              scores[key].score += 5;
+            if (relatedAudio && relatedAudio.primary_intentions) {
+              const matchesRelated = relatedAudio.primary_intentions.some(intent =>
+                intent.toLowerCase().includes(goal.toLowerCase()) ||
+                goal.toLowerCase().includes(intent.toLowerCase())
+              );
+              if (matchesRelated) {
+                scores[key].score += 5;
+              }
             }
           });
         }
@@ -107,53 +127,87 @@ export const matchAudioFile = async (formData) => {
     });
   }
 
-  // 4. ENERGY LEVELS (Weight: 3 points each)
+  // 4. SYMPTOM LEVELS (Weight: 5 points each - higher weight for symptom-based matching)
   audioFiles.forEach(audio => {
     const key = `${audio.frequency_min}-${audio.frequency_max}`;
 
     if (!audio.healing_properties) return;
 
-    // Low physical energy -> look for "pain", "stress", "energy" properties
-    if (formData.physicalEnergy <= 3) {
+    // High pain level (6+) -> look for "pain", "inflammation", "relief" properties
+    const painLevel = formData.painLevel ?? formData.physicalEnergy ?? 0;
+    if (painLevel >= 6) {
       const hasRelevantProperty = audio.healing_properties.some(prop =>
         prop.toLowerCase().includes('pain') ||
-        prop.toLowerCase().includes('stress') ||
-        prop.toLowerCase().includes('energy')
+        prop.toLowerCase().includes('inflammation') ||
+        prop.toLowerCase().includes('relief') ||
+        prop.toLowerCase().includes('healing')
       );
-      if (hasRelevantProperty) scores[key].score += 3;
+      if (hasRelevantProperty) scores[key].score += 5;
     }
 
-    // Low emotional balance -> emotional release frequencies
-    if (formData.emotionalBalance <= 3) {
+    // High stress/anxiety level (6+) -> anxiety/stress relief frequencies
+    const stressLevel = formData.stressAnxietyLevel ?? formData.emotionalBalance ?? 0;
+    if (stressLevel >= 6) {
       const hasRelevantProperty = audio.healing_properties.some(prop =>
+        prop.toLowerCase().includes('stress') ||
+        prop.toLowerCase().includes('anxiety') ||
+        prop.toLowerCase().includes('calm') ||
         prop.toLowerCase().includes('emotional') ||
         prop.toLowerCase().includes('harmony')
       );
-      if (hasRelevantProperty) scores[key].score += 3;
+      if (hasRelevantProperty) scores[key].score += 5;
     }
 
-    // Low mental clarity -> clarity/cleansing frequencies
-    if (formData.mentalClarity <= 3) {
+    // Poor sleep quality (1-2) -> sleep/relaxation frequencies
+    const sleepQuality = formData.sleepQuality ?? 3;
+    if (sleepQuality <= 2) {
       const hasRelevantProperty = audio.healing_properties.some(prop =>
-        prop.toLowerCase().includes('clarity') ||
-        prop.toLowerCase().includes('focus')
+        prop.toLowerCase().includes('sleep') ||
+        prop.toLowerCase().includes('insomnia') ||
+        prop.toLowerCase().includes('relaxation') ||
+        prop.toLowerCase().includes('rest')
       );
-      if (hasRelevantProperty) scores[key].score += 3;
-    }
-
-    // Low spiritual connection -> spiritual frequencies
-    if (formData.spiritualConnection <= 3) {
-      const hasRelevantProperty = audio.healing_properties.some(prop =>
-        prop.toLowerCase().includes('spiritual') ||
-        prop.toLowerCase().includes('meditation')
-      );
-      if (hasRelevantProperty) scores[key].score += 3;
+      if (hasRelevantProperty) scores[key].score += 5;
     }
   });
 
-  // 5. HEALTH CONCERNS (Weight: 4 points)
+  // 5. MAIN PAIN AREAS (Weight: 6 points - specific targeting)
+  if (formData.mainPainAreas && formData.mainPainAreas.length > 0) {
+    formData.mainPainAreas.forEach(area => {
+      audioFiles.forEach(audio => {
+        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+
+        if (!audio.healing_properties) return;
+
+        const lowerArea = area.toLowerCase();
+
+        // Special case: Fibromyalgia -> 174 Hz
+        if (lowerArea.includes('fibromyalgia') || lowerArea.includes('widespread')) {
+          if (audio.frequency_min <= 174 && audio.frequency_max >= 174) {
+            scores[key].score += 10; // Strong preference for 174 Hz
+          }
+        }
+
+        // Match pain area keywords
+        const matchesProperty = audio.healing_properties.some(prop =>
+          prop.toLowerCase().includes(lowerArea) ||
+          prop.toLowerCase().includes('pain') ||
+          (lowerArea.includes('headache') && prop.toLowerCase().includes('migraine'))
+        );
+
+        if (matchesProperty) {
+          scores[key].score += 6;
+        }
+      });
+    });
+  }
+
+  // 6. HEALTH CONCERNS / SAFETY SCREEN (Weight: 4 points)
   if (formData.healthConcerns && formData.healthConcerns.length > 0) {
     formData.healthConcerns.forEach(concern => {
+      // Skip 'none' - it's not a real concern
+      if (concern === 'none') return;
+
       audioFiles.forEach(audio => {
         const key = `${audio.frequency_min}-${audio.frequency_max}`;
 

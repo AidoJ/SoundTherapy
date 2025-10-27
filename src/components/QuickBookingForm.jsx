@@ -1,111 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
 import './QuickBookingForm.css';
 
 const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
-  const [currentStep, setCurrentStep] = useState('safetyScreen'); // safetyScreen, booking, confirmation
+  const [currentStep, setCurrentStep] = useState('healthGate'); // healthGate, booking, confirmation
   const [formData, setFormData] = useState({
-    // Safety Screen - only "noneApply" can be checked
-    noneApply: false,
+    // Health Gate
+    hasPacemaker: false,
+    isPregnant: false,
+    recentSurgery: false,
+    activeCancerTreatment: false,
     
     // Booking Details
     firstName: '',
     surname: '',
     phone: '',
     email: '',
-    dateOfBirth: '',
     serviceType: '',
     duration: '',
-    selectedDate: '',
     selectedSlot: '',
     paymentMethod: 'cash'
   });
 
   const [availableSlots, setAvailableSlots] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Contraindications list (display only, not checkable except "None apply")
-  const contraindications = [
-    { id: 'pacemaker', label: 'Pacemakers/Implants', info: 'Pacemakers and other medical implants may be affected by electromagnetic fields.' },
-    { id: 'dvt', label: 'Deep Vein Thrombosis', info: 'DVT requires medical clearance before any therapy sessions.' },
-    { id: 'bleeding', label: 'Bleeding Disorders', info: 'Bleeding disorders may be exacerbated by certain frequencies.' },
-    { id: 'surgery', label: 'Recent Surgery/Open Wounds', info: 'Recent surgery or open wounds require healing time before therapy.' },
-    { id: 'bp', label: 'Severe Low Blood Pressure', info: 'Severe hypotension may be affected by relaxation frequencies.' },
-    { id: 'seizure', label: 'Seizure Disorders', info: 'Certain frequencies may trigger seizures in susceptible individuals.' },
-    { id: 'inflammatory', label: 'Acute Inflammatory Conditions', info: 'Active inflammation may be worsened by certain frequencies.' },
-    { id: 'psychotic', label: 'Psychotic Conditions', info: 'Psychotic conditions require medical supervision for therapy.' },
-    { id: 'pregnancy', label: 'Pregnancy', info: 'Pregnancy requires special consideration for frequency selection.' },
-    { id: 'chemotherapy', label: 'Chemotherapy / Active Cancer Treatment', info: 'Active cancer treatment requires oncologist clearance before therapy.' }
-  ];
-
-  // Load available time slots based on selected date and duration
+  // Generate available time slots (mock data for now)
   useEffect(() => {
-    if (formData.selectedDate && formData.duration) {
-      loadAvailableSlots();
-    }
-  }, [formData.selectedDate, formData.duration]);
-
-  const loadAvailableSlots = async () => {
-    setLoading(true);
-    try {
-      // Get existing bookings for the selected date
-      const { data: existingBookings, error } = await supabase
-        .from('bookings')
-        .select('selectedslot, duration')
-        .gte('selectedslot', `${formData.selectedDate}T00:00:00`)
-        .lt('selectedslot', `${formData.selectedDate}T23:59:59`)
-        .in('bookingstatus', ['confirmed', 'in_progress']);
-
-      if (error) {
-        console.error('Error loading bookings:', error);
-        setAvailableSlots([]);
-        return;
-      }
-
-      // Generate available slots (9 AM to 6 PM, 30-minute intervals)
+    const generateSlots = () => {
       const slots = [];
-      const startHour = 9;
-      const endHour = 18;
-      const slotDuration = 30; // minutes
-      const requestedDuration = parseInt(formData.duration);
-
-      for (let hour = startHour; hour < endHour; hour++) {
-        for (let minute = 0; minute < 60; minute += slotDuration) {
-          const slotTime = new Date(`${formData.selectedDate}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`);
-          const slotEndTime = new Date(slotTime.getTime() + requestedDuration * 60000);
-
-          // Check if this slot conflicts with existing bookings
-          const hasConflict = existingBookings.some(booking => {
-            const bookingStart = new Date(booking.selectedslot);
-            const bookingEnd = new Date(bookingStart.getTime() + booking.duration * 60000);
-
-            return (slotTime < bookingEnd && slotEndTime > bookingStart);
-          });
-
-          if (!hasConflict) {
-            slots.push({
-              id: `${hour}-${minute}`,
-              time: slotTime,
-              display: slotTime.toLocaleTimeString('en-AU', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              })
-            });
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Generate slots for next 3 days
+      for (let day = 0; day < 3; day++) {
+        const currentDay = new Date(today);
+        currentDay.setDate(today.getDate() + day);
+        
+        // Generate slots from 9 AM to 6 PM, every 30 minutes
+        for (let hour = 9; hour < 18; hour++) {
+          for (let minute = 0; minute < 60; minute += 30) {
+            const slotTime = new Date(currentDay);
+            slotTime.setHours(hour, minute, 0, 0);
+            
+            // Only show future slots
+            if (slotTime > now) {
+              slots.push({
+                id: `${day}-${hour}-${minute}`,
+                datetime: slotTime,
+                available: Math.random() > 0.3 // Mock availability
+              });
+            }
           }
         }
       }
+      
+      setAvailableSlots(slots.filter(slot => slot.available));
+    };
 
-      setAvailableSlots(slots);
-    } catch (error) {
-      console.error('Error calculating available slots:', error);
-      setAvailableSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    generateSlots();
+  }, []);
 
-  const handleSafetyScreenChange = (field, value) => {
+  const handleHealthGateChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -119,104 +73,116 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
     }));
   };
 
-  const proceedToBooking = () => {
-    if (formData.noneApply) {
-      setCurrentStep('booking');
+  const checkHealthGate = () => {
+    const hasContraindications = 
+      formData.hasPacemaker || 
+      formData.isPregnant || 
+      formData.recentSurgery || 
+      formData.activeCancerTreatment;
+
+    if (hasContraindications) {
+      // Redirect to full intake form
+      onRequireFullIntake(formData);
     } else {
-      alert('Unfortunately, you have indicated a condition that may be a contraindication. We cannot proceed with this treatment unless you have a consent form from your GP or attending Physician.');
+      // Proceed to booking
+      setCurrentStep('booking');
     }
   };
 
-  const handleBookingSubmit = async (e) => {
+  const handleBookingSubmit = (e) => {
     e.preventDefault();
     
     // Validate required fields
     if (!formData.firstName || !formData.surname || !formData.phone || 
-        !formData.email || !formData.serviceType || !formData.duration || 
-        !formData.selectedDate || !formData.selectedSlot) {
+        !formData.serviceType || !formData.duration || !formData.selectedSlot) {
       alert('Please fill in all required fields');
       return;
     }
 
-    setLoading(true);
-    
-    try {
-      // Create booking data
-      const selectedSlotTime = availableSlots.find(slot => slot.id === formData.selectedSlot);
-      const bookingData = {
-        userid: `user_${Date.now()}`,
-        firstname: formData.firstName,
-        surname: formData.surname,
-        phone: formData.phone,
-        email: formData.email,
-        servicetype: formData.serviceType,
-        duration: parseInt(formData.duration),
-        selectedslot: selectedSlotTime.time.toISOString(),
-        paymentmethod: formData.paymentMethod,
-        paymentstatus: formData.paymentMethod === 'card' ? 'pending' : 'paid',
-        bookingstatus: 'confirmed',
-        notes: `Quick booking - DOB: ${formData.dateOfBirth || 'Not provided'}`
-      };
-
-      // Save to database
-      const { error } = await supabase
-        .from('bookings')
-        .insert([bookingData]);
-
-      if (error) {
-        console.error('Error creating booking:', error);
-        alert('Error creating booking: ' + error.message);
-        return;
-      }
-
-      // Complete booking
-      setCurrentStep('confirmation');
-      onBookingComplete(bookingData);
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      alert('Error creating booking: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
+    // Complete booking
+    setCurrentStep('confirmation');
+    onBookingComplete(formData);
   };
 
-  if (currentStep === 'safetyScreen') {
+  const formatTimeSlot = (datetime) => {
+    const date = datetime.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    const time = datetime.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    return `${date} at ${time}`;
+  };
+
+  const getNextAvailableSlots = () => {
+    return availableSlots.slice(0, 6); // Show next 6 available slots
+  };
+
+  if (currentStep === 'healthGate') {
     return (
       <div className="quick-booking-container">
         <div className="booking-header">
-          <h2>4. Safety Screen</h2>
-          <p>Please review the following conditions</p>
+          <h2>Quick Health Check</h2>
+          <p>Please answer these questions to proceed with booking</p>
         </div>
 
-        <div className="safety-screen">
-          <div className="contraindications-list">
-            {contraindications.map((item) => (
-              <div key={item.id} className="contraindication-item">
-                <div className="contraindication-info">
-                  <span className="contraindication-label">{item.label}</span>
-                  <span className="info-icon" title={item.info}>ℹ️</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="none-apply-section">
-            <label className="none-apply-label">
+        <div className="health-gate">
+          <div className="health-question">
+            <label className="health-label">
               <input
                 type="checkbox"
-                checked={formData.noneApply}
-                onChange={(e) => handleSafetyScreenChange('noneApply', e.target.checked)}
+                checked={formData.hasPacemaker}
+                onChange={(e) => handleHealthGateChange('hasPacemaker', e.target.checked)}
               />
               <span className="checkmark"></span>
-              <strong>None apply</strong>
+              <strong>Pacemaker or medical implants</strong>
             </label>
           </div>
 
-          <div className="safety-actions">
+          <div className="health-question">
+            <label className="health-label">
+              <input
+                type="checkbox"
+                checked={formData.isPregnant}
+                onChange={(e) => handleHealthGateChange('isPregnant', e.target.checked)}
+              />
+              <span className="checkmark"></span>
+              <strong>Currently pregnant</strong>
+            </label>
+          </div>
+
+          <div className="health-question">
+            <label className="health-label">
+              <input
+                type="checkbox"
+                checked={formData.recentSurgery}
+                onChange={(e) => handleHealthGateChange('recentSurgery', e.target.checked)}
+              />
+              <span className="checkmark"></span>
+              <strong>Recent surgery (last 6 weeks)</strong>
+            </label>
+          </div>
+
+          <div className="health-question">
+            <label className="health-label">
+              <input
+                type="checkbox"
+                checked={formData.activeCancerTreatment}
+                onChange={(e) => handleHealthGateChange('activeCancerTreatment', e.target.checked)}
+              />
+              <span className="checkmark"></span>
+              <strong>Active cancer treatment</strong>
+            </label>
+          </div>
+
+          <div className="health-gate-actions">
             <button 
               className="btn btn-primary btn-large"
-              onClick={proceedToBooking}
-              disabled={!formData.noneApply}
+              onClick={checkHealthGate}
             >
               Continue to Booking
             </button>
@@ -282,18 +248,6 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
                 />
               </div>
             </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => handleBookingChange('dateOfBirth', e.target.value)}
-                  placeholder="dd/mm/yyyy"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="form-section">
@@ -307,9 +261,8 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
                   required
                 >
                   <option value="">Select service</option>
-                  <option value="Sound Healing Session">Sound Healing Session</option>
-                  <option value="Vibroacoustic Therapy">Vibroacoustic Therapy</option>
-                  <option value="PEMF Therapy">PEMF Therapy</option>
+                  <option value="vibroacoustic">Vibroacoustic Therapy</option>
+                  <option value="pemf">PEMF Therapy</option>
                 </select>
               </div>
               <div className="form-group">
@@ -320,52 +273,31 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
                   required
                 >
                   <option value="">Select duration</option>
+                  <option value="15">15 minutes</option>
                   <option value="30">30 minutes</option>
                   <option value="45">45 minutes</option>
-                  <option value="60">60 minutes</option>
                 </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Date *</label>
-                <input
-                  type="date"
-                  value={formData.selectedDate}
-                  onChange={(e) => handleBookingChange('selectedDate', e.target.value)}
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                />
               </div>
             </div>
           </div>
 
-          {formData.selectedDate && formData.duration && (
-            <div className="form-section">
-              <h3>Available Times</h3>
-              {loading ? (
-                <div className="loading-slots">Loading available times...</div>
-              ) : availableSlots.length > 0 ? (
-                <div className="time-slots">
-                  {availableSlots.map(slot => (
-                    <label key={slot.id} className="time-slot">
-                      <input
-                        type="radio"
-                        name="selectedSlot"
-                        value={slot.id}
-                        checked={formData.selectedSlot === slot.id}
-                        onChange={(e) => handleBookingChange('selectedSlot', e.target.value)}
-                      />
-                      <span className="slot-time">{slot.display}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-slots">No available times for this date and duration.</div>
-              )}
+          <div className="form-section">
+            <h3>Available Times</h3>
+            <div className="time-slots">
+              {getNextAvailableSlots().map(slot => (
+                <label key={slot.id} className="time-slot">
+                  <input
+                    type="radio"
+                    name="selectedSlot"
+                    value={slot.id}
+                    checked={formData.selectedSlot === slot.id}
+                    onChange={(e) => handleBookingChange('selectedSlot', e.target.value)}
+                  />
+                  <span className="slot-time">{formatTimeSlot(slot.datetime)}</span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
 
           <div className="form-section">
             <h3>Payment Method</h3>
@@ -401,29 +333,21 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
                 <span>FOC (Free of Charge)</span>
               </label>
             </div>
-
-            {formData.paymentMethod === 'card' && (
-              <div className="stripe-payment">
-                <p>Stripe payment module will be loaded here</p>
-                {/* TODO: Integrate Stripe Elements */}
-              </div>
-            )}
           </div>
 
           <div className="booking-actions">
             <button 
               type="button" 
               className="btn btn-secondary"
-              onClick={() => setCurrentStep('safetyScreen')}
+              onClick={() => setCurrentStep('healthGate')}
             >
               Back
             </button>
             <button 
               type="submit" 
               className="btn btn-primary btn-large"
-              disabled={loading}
             >
-              {loading ? 'Creating Booking...' : 'Complete Booking'}
+              Complete Booking
             </button>
           </div>
         </form>
@@ -447,10 +371,9 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
             <p><strong>Name:</strong> {formData.firstName} {formData.surname}</p>
             <p><strong>Phone:</strong> {formData.phone}</p>
             <p><strong>Email:</strong> {formData.email}</p>
-            <p><strong>Service:</strong> {formData.serviceType}</p>
+            <p><strong>Service:</strong> {formData.serviceType === 'vibroacoustic' ? 'Vibroacoustic Therapy' : 'PEMF Therapy'}</p>
             <p><strong>Duration:</strong> {formData.duration} minutes</p>
-            <p><strong>Date:</strong> {new Date(formData.selectedDate).toLocaleDateString('en-AU')}</p>
-            <p><strong>Time:</strong> {selectedSlotData ? selectedSlotData.display : 'Not selected'}</p>
+            <p><strong>Time:</strong> {selectedSlotData ? formatTimeSlot(selectedSlotData.datetime) : 'Not selected'}</p>
             <p><strong>Payment:</strong> {formData.paymentMethod.toUpperCase()}</p>
           </div>
 
@@ -458,17 +381,18 @@ const QuickBookingForm = ({ onBookingComplete, onRequireFullIntake }) => {
             <button 
               className="btn btn-primary btn-large"
               onClick={() => {
-                setCurrentStep('safetyScreen');
+                setCurrentStep('healthGate');
                 setFormData({
-                  noneApply: false,
+                  hasPacemaker: false,
+                  isPregnant: false,
+                  recentSurgery: false,
+                  activeCancerTreatment: false,
                   firstName: '',
                   surname: '',
                   phone: '',
                   email: '',
-                  dateOfBirth: '',
                   serviceType: '',
                   duration: '',
-                  selectedDate: '',
                   selectedSlot: '',
                   paymentMethod: 'cash'
                 });

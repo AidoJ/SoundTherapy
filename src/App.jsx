@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import WelcomeScreen from './components/WelcomeScreen';
 import QuickBookingForm from './components/QuickBookingForm';
+import BookingForm from './components/BookingForm';
+import BookingsList from './components/BookingsList';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
 import { matchAudioFile, getAudioFileForFrequency } from './services/audioMatcher';
@@ -8,26 +11,31 @@ import { saveClient, saveSession, getClientByEmail } from './services/supabaseCl
 // Email sending is now handled in ResultsScreen when Complete Session is clicked
 import './App.css';
 
-function App() {
-  const [screen, setScreen] = useState('welcome'); // 'welcome', 'booking', 'form', 'results'
+// Main app logic wrapper
+function AppContent() {
   const [recommendedFrequency, setRecommendedFrequency] = useState(null);
   const [sessionData, setSessionData] = useState(null);
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleStart = () => {
-    setScreen('booking');
+    navigate('/quick-booking');
   };
 
   const handleBookingComplete = (booking) => {
     setBookingData(booking);
-    // For now, go directly to form. Later we'll add booking management
-    setScreen('form');
+    navigate('/intake');
+  };
+
+  const handleMarketBookingComplete = (booking) => {
+    // Redirect to a success page or show message
+    navigate('/booking-success');
   };
 
   const handleRequireFullIntake = (healthData) => {
     // If contraindications found, go directly to full intake form
-    setScreen('form');
+    navigate('/intake');
   };
 
   const handleFormSubmit = async (formData) => {
@@ -113,7 +121,7 @@ function App() {
       }
 
       // 5. Show results
-      setScreen('results');
+      navigate('/results');
     } catch (error) {
       console.error('Error processing form:', error);
       alert('An error occurred. Please try again.');
@@ -123,7 +131,7 @@ function App() {
   };
 
   const handleReset = () => {
-    setScreen('welcome');
+    navigate('/');
     setRecommendedFrequency(null);
     setSessionData(null);
     setBookingData(null);
@@ -132,34 +140,81 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        {screen === 'welcome' && <WelcomeScreen onStart={handleStart} />}
+        {loading && <div className="loading-overlay">Processing...</div>}
 
-        {screen === 'booking' && (
-          <QuickBookingForm 
-            onBookingComplete={handleBookingComplete}
-            onRequireFullIntake={handleRequireFullIntake}
+        <Routes>
+          {/* Home / Welcome Screen */}
+          <Route path="/" element={<WelcomeScreen onStart={handleStart} />} />
+
+          {/* Quick Booking (Original Flow) */}
+          <Route
+            path="/quick-booking"
+            element={
+              <QuickBookingForm
+                onBookingComplete={handleBookingComplete}
+                onRequireFullIntake={handleRequireFullIntake}
+              />
+            }
           />
-        )}
 
-        {screen === 'form' && (
-          <>
-            {loading && <div className="loading-overlay">Processing...</div>}
-            <IntakeForm 
-              onSubmit={handleFormSubmit}
-              bookingData={bookingData}
-            />
-          </>
-        )}
-
-        {screen === 'results' && recommendedFrequency && sessionData && (
-          <ResultsScreen
-            frequency={recommendedFrequency}
-            sessionData={sessionData}
-            onReset={handleReset}
+          {/* Market Booking Form (New Flow) */}
+          <Route
+            path="/booking"
+            element={<BookingForm onBookingComplete={handleMarketBookingComplete} />}
           />
-        )}
+
+          {/* Booking Success Page */}
+          <Route
+            path="/booking-success"
+            element={
+              <div className="booking-success">
+                <h2>✅ Booking Confirmed!</h2>
+                <p>Your session has been booked. You'll receive a confirmation email shortly.</p>
+                <p>Please arrive 5 minutes before your scheduled time.</p>
+                <button onClick={() => navigate('/')}>Back to Home</button>
+              </div>
+            }
+          />
+
+          {/* Practitioner Bookings Dashboard */}
+          <Route path="/bookings" element={<BookingsList />} />
+
+          {/* Intake Form (accepts ?bookingId parameter) */}
+          <Route
+            path="/intake"
+            element={<IntakeForm onSubmit={handleFormSubmit} bookingData={bookingData} />}
+          />
+
+          {/* Results Screen */}
+          <Route
+            path="/results"
+            element={
+              recommendedFrequency && sessionData ? (
+                <ResultsScreen
+                  frequency={recommendedFrequency}
+                  sessionData={sessionData}
+                  onReset={handleReset}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
     </div>
+  );
+}
+
+// Main App component with Router
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

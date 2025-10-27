@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
 const IntakeForm = ({ onSubmit, bookingData }) => {
+  const [loadingBooking, setLoadingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
+  const [currentBookingId, setCurrentBookingId] = useState(null);
   const [formData, setFormData] = useState({
     // Client Details
     fullName: '',
@@ -45,7 +49,66 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     calculateProgress();
   }, [formData]);
 
-  // Auto-populate from booking data
+  // Load booking data from URL parameter
+  useEffect(() => {
+    const loadBookingFromUrl = async () => {
+      // Check for bookingId in URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const bookingId = urlParams.get('bookingId');
+
+      if (bookingId) {
+        try {
+          setLoadingBooking(true);
+          setBookingError(null);
+          setCurrentBookingId(bookingId);
+
+          // Fetch booking data
+          const { data: booking, error: fetchError } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .single();
+
+          if (fetchError) throw fetchError;
+
+          if (booking) {
+            // Auto-fill form from booking data
+            setFormData(prev => ({
+              ...prev,
+              fullName: `${booking.firstname} ${booking.surname}`,
+              phone: booking.phone,
+              email: booking.email,
+              healthConcerns: booking.contraindications && booking.contraindications.length > 0
+                ? booking.contraindications
+                : ['none']
+            }));
+
+            // Mark booking as in-progress
+            const { error: updateError } = await supabase
+              .from('bookings')
+              .update({
+                bookingstatus: 'in-progress',
+                startedat: new Date().toISOString()
+              })
+              .eq('id', bookingId);
+
+            if (updateError) {
+              console.error('Error updating booking status:', updateError);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading booking:', err);
+          setBookingError(err.message);
+        } finally {
+          setLoadingBooking(false);
+        }
+      }
+    };
+
+    loadBookingFromUrl();
+  }, []);
+
+  // Auto-populate from booking data prop (legacy support)
   useEffect(() => {
     if (bookingData) {
       setFormData(prev => ({
@@ -192,7 +255,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation
@@ -228,6 +291,25 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
       return;
     }
 
+    // If this session came from a booking, mark it as completed
+    if (currentBookingId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({
+            bookingstatus: 'completed',
+            completedat: new Date().toISOString()
+          })
+          .eq('id', currentBookingId);
+
+        if (updateError) {
+          console.error('Error marking booking as completed:', updateError);
+        }
+      } catch (err) {
+        console.error('Error updating booking:', err);
+      }
+    }
+
     onSubmit(formData);
   };
 
@@ -237,6 +319,24 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
         <h2>Vibroacoustic Session – Physical & Emotional Intake</h2>
         <p>Help us understand your needs for optimal therapy</p>
       </div>
+
+      {loadingBooking && (
+        <div className="info-banner">
+          ⏳ Loading booking information...
+        </div>
+      )}
+
+      {bookingError && (
+        <div className="error-banner">
+          ❌ Error loading booking: {bookingError}
+        </div>
+      )}
+
+      {currentBookingId && !loadingBooking && (
+        <div className="success-banner">
+          ✅ Booking loaded successfully. Client details have been auto-filled.
+        </div>
+      )}
 
       <div className="progress-bar">
         <div className="progress-fill" style={{ width: `${progress}%` }}></div>
