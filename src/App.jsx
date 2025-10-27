@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import WelcomeScreen from './components/WelcomeScreen';
 import QuickBookingForm from './components/QuickBookingForm';
 import BookingForm from './components/BookingForm';
@@ -12,8 +12,8 @@ import { saveClient, saveSession, getClientByEmail } from './services/supabaseCl
 // Email sending is now handled in ResultsScreen when Complete Session is clicked
 import './App.css';
 
-// Main app logic wrapper
-function AppContent() {
+// Main App component
+function App() {
   const [recommendedFrequency, setRecommendedFrequency] = useState(null);
   const [sessionData, setSessionData] = useState(null);
   const [bookingData, setBookingData] = useState(null);
@@ -197,15 +197,6 @@ function AppContent() {
         </Routes>
       </div>
     </div>
-  );
-}
-
-// Main App component with Router
-function App() {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
   );
 }
 
