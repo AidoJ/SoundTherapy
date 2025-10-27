@@ -1,0 +1,78 @@
+.booking-success {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 24px;
+}
+
+.success-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+  padding: 48px 32px;
+  max-width: 500px;
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 72px;
+  margin-bottom: 24px;
+  animation: scaleIn 0.5s ease-out;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.success-card h2 {
+  color: #28a745;
+  margin: 0 0 16px 0;
+  font-size: 28px;
+}
+
+.success-card p {
+  color: #5e6b6b;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+
+.success-info {
+  background: #f0f9f8;
+  border-left: 4px solid #008e8c;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 24px 0;
+}
+
+.success-info strong {
+  color: #008e8c;
+}
+
+.success-card .btn-primary {
+  margin-top: 24px;
+  padding: 14px 32px;
+  border-radius: 12px;
+  border: 0;
+  background: #008e8c;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 142, 140, 0.25);
+  font-size: 16px;
+  transition: 0.15s;
+}
+
+.success-card .btn-primary:hover {
+  background: #006d6b;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 142, 140, 0.35);
+}

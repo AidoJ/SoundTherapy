@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import WelcomeScreen from './components/WelcomeScreen';
 import QuickBookingForm from './components/QuickBookingForm';
 import BookingForm from './components/BookingForm';
+import BookingSuccess from './components/BookingSuccess';
 import BookingsList from './components/BookingsList';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
@@ -164,17 +165,7 @@ function AppContent() {
           />
 
           {/* Booking Success Page */}
-          <Route
-            path="/booking-success"
-            element={
-              <div className="booking-success">
-                <h2>✅ Booking Confirmed!</h2>
-                <p>Your session has been booked. You'll receive a confirmation email shortly.</p>
-                <p>Please arrive 5 minutes before your scheduled time.</p>
-                <button onClick={() => navigate('/')}>Back to Home</button>
-              </div>
-            }
-          />
+          <Route path="/booking-success" element={<BookingSuccess />} />
 
           {/* Practitioner Bookings Dashboard */}
           <Route path="/bookings" element={<BookingsList />} />
