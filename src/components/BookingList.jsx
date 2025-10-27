@@ -2,328 +2,371 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import './BookingList.css';
 
-const BookingList = ({ onStartSession }) => {
+const BookingList = () => {
   const [bookings, setBookings] = useState([]);
+  const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newBooking, setNewBooking] = useState({
-    firstname: '',
-    surname: '',
-    phone: '',
-    email: '',
-    duration: 30,
-    selectedslot: '',
-    notes: ''
+  const [stats, setStats] = useState({
+    total: 0,
+    confirmed: 0,
+    cashPending: 0,
+    completed: 0
   });
 
   useEffect(() => {
     loadBookings();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('bookings_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => {
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadBookings = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          *,
+          services (
+            service_name,
+            duration_minutes,
+            price_cents,
+            icon_emoji
+          )
+        `)
+        .gte('selectedslot', `${today}T00:00:00`)
+        .lt('selectedslot', `${today}T23:59:59`)
         .order('selectedslot', { ascending: true });
 
-      if (error) {
-        console.error('Error loading bookings:', error);
-        if (error.code === 'PGRST116') {
-          // Table doesn't exist - show message to create it
-          setBookings([]);
-        } else {
-          setBookings([]);
-        }
-      } else {
-        setBookings(data || []);
-      }
-    } catch (error) {
-      console.error('Error loading bookings:', error);
-      setBookings([]);
+      if (error) throw error;
+
+      setBookings(data || []);
+      updateStats(data || []);
+    } catch (err) {
+      console.error('Error loading bookings:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateBookingStatus = async (bookingId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ bookingstatus: newStatus })
-        .eq('id', bookingId);
+  const updateStats = (bookingsData) => {
+    const total = bookingsData.length;
+    const confirmed = bookingsData.filter(b =>
+      b.bookingstatus === 'confirmed' &&
+      (b.paymentmethod !== 'Cash' || b.cash_received === true)
+    ).length;
+    const cashPending = bookingsData.filter(b =>
+      b.paymentmethod === 'Cash' && b.cash_received === false
+    ).length;
+    const completed = bookingsData.filter(b => b.bookingstatus === 'completed').length;
 
-      if (error) {
-        console.error('Error updating booking status:', error);
-        alert('Error updating booking status: ' + error.message);
-      } else {
-        loadBookings(); // Reload to get fresh data
-      }
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      alert('Error updating booking status: ' + error.message);
-    }
+    setStats({ total, confirmed, cashPending, completed });
   };
 
-  const addBooking = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const bookingData = {
-        ...newBooking,
-        userid: `user_${Date.now()}`,
-        servicetype: 'Sound Healing Session',
-        paymentmethod: 'Stripe',
-        paymentstatus: 'paid',
-        bookingstatus: 'confirmed'
-      };
-
-      const { error } = await supabase
-        .from('bookings')
-        .insert([bookingData]);
-
-      if (error) {
-        console.error('Error adding booking:', error);
-        if (error.code === 'PGRST116') {
-          alert('Bookings table does not exist. Please create it first using the SQL script in database/bookings_schema.sql');
-        } else {
-          alert('Error adding booking: ' + error.message);
-        }
-      } else {
-        alert('Booking added successfully!');
-        setShowAddForm(false);
-        setNewBooking({
-          firstname: '',
-          surname: '',
-          phone: '',
-          email: '',
-          duration: 30,
-          selectedslot: '',
-          notes: ''
-        });
-        loadBookings();
-      }
-    } catch (error) {
-      console.error('Error adding booking:', error);
-      alert('Error adding booking: ' + error.message);
-    } finally {
-      setLoading(false);
+  const getFilteredBookings = () => {
+    if (filter === 'cash-pending') {
+      return bookings.filter(b => b.paymentmethod === 'Cash' && b.cash_received === false);
+    } else if (filter === 'confirmed') {
+      return bookings.filter(b =>
+        b.bookingstatus === 'confirmed' &&
+        (b.paymentmethod !== 'Cash' || b.cash_received === true)
+      );
+    } else if (filter !== 'all') {
+      return bookings.filter(b => b.bookingstatus === filter);
     }
-  };
-
-  const handleStartSession = (booking) => {
-    const bookingData = {
-      firstName: booking.firstname,
-      surname: booking.surname,
-      phone: booking.phone,
-      email: booking.email
-    };
-    
-    // Update booking status to in_progress
-    updateBookingStatus(booking.id, 'in_progress');
-    
-    // Pass booking data to parent component
-    if (onStartSession) {
-      onStartSession(bookingData);
-    }
+    return bookings;
   };
 
   const formatTime = (dateTimeString) => {
-    return new Date(dateTimeString).toLocaleTimeString('en-AU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    const date = new Date(dateTimeString);
+    return date.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  const formatDate = (dateTimeString) => {
-    return new Date(dateTimeString).toLocaleDateString('en-AU');
+  const formatPrice = (cents) => {
+    return `$${(cents / 100).toFixed(2)}`;
   };
+
+  const getPaymentBadge = (booking) => {
+    if (booking.paymentmethod === 'Cash') {
+      if (booking.cash_received === true) {
+        return <span className="status-badge cash-received">💵 Cash Received</span>;
+      } else {
+        return <span className="status-badge cash-pending">💵 Cash Due</span>;
+      }
+    } else {
+      return <span className="status-badge paid">💳 Paid Online</span>;
+    }
+  };
+
+  const formatStatus = (status) => {
+    const statusMap = {
+      'pending': '⏳ Pending',
+      'confirmed': '✓ Confirmed',
+      'in-progress': '▶️ In Progress',
+      'completed': '✅ Completed'
+    };
+    return statusMap[status] || status;
+  };
+
+  const markCashReceived = async (bookingId, firstName, surname, price) => {
+    if (!window.confirm(`Mark cash payment of ${formatPrice(price)} as received from ${firstName} ${surname}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc('mark_cash_received', {
+        p_booking_id: bookingId,
+        p_received_by: 'Practitioner'
+      });
+
+      if (error) throw error;
+
+      alert(`✓ Cash payment received from ${firstName} ${surname}\n\nBooking is now confirmed and ready to start.`);
+      loadBookings();
+    } catch (err) {
+      console.error('Error marking cash received:', err);
+      alert('❌ Error: ' + err.message);
+    }
+  };
+
+  const startSession = (bookingId) => {
+    // Redirect to intake form with booking ID
+    window.location.href = `/intake?bookingId=${bookingId}`;
+  };
+
+  const completeSession = async (bookingId, firstName, surname) => {
+    if (!window.confirm(`Complete session for ${firstName} ${surname}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          bookingstatus: 'completed',
+          completedat: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      alert(`✅ Session completed for ${firstName} ${surname}`);
+      loadBookings();
+    } catch (err) {
+      console.error('Error completing session:', err);
+      alert('❌ Error: ' + err.message);
+    }
+  };
+
+  const getActionButtons = (booking) => {
+    // Cash payment pending
+    if (booking.paymentmethod === 'Cash' && booking.cash_received === false) {
+      return (
+        <>
+          <button
+            className="btn btn-warning"
+            onClick={() => markCashReceived(booking.id, booking.firstname, booking.surname, booking.price_paid_cents)}
+          >
+            💵 Mark Cash Received
+          </button>
+          <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+            View Details
+          </button>
+        </>
+      );
+    }
+
+    // Ready to start session
+    if (booking.bookingstatus === 'confirmed') {
+      return (
+        <>
+          <button
+            className="btn btn-primary"
+            onClick={() => startSession(booking.id)}
+          >
+            ▶️ Start Session
+          </button>
+          <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+            View Details
+          </button>
+        </>
+      );
+    }
+
+    // Session in progress
+    if (booking.bookingstatus === 'in-progress') {
+      return (
+        <button
+          className="btn btn-success"
+          onClick={() => completeSession(booking.id, booking.firstname, booking.surname)}
+        >
+          ✓ Complete Session
+        </button>
+      );
+    }
+
+    // Session completed
+    if (booking.bookingstatus === 'completed') {
+      return (
+        <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+          View Session
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  const viewDetails = (booking) => {
+    const paymentInfo = booking.paymentmethod === 'Cash'
+      ? `Cash ${booking.cash_received ? '(Received)' : '(Pending)'}`
+      : 'Stripe (Paid)';
+
+    alert(`Booking Details:\n\nName: ${booking.firstname} ${booking.surname}\nService: ${booking.services?.service_name}\nTime: ${formatTime(booking.selectedslot)}\nDuration: ${booking.services?.duration_minutes} minutes\nPrice: ${formatPrice(booking.price_paid_cents)}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nPayment: ${paymentInfo}\nStatus: ${booking.bookingstatus}`);
+  };
+
+  const filterBookings = (newFilter) => {
+    setFilter(newFilter);
+  };
+
+  const refreshBookings = () => {
+    loadBookings();
+  };
+
+  const currentDate = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  const filteredBookings = getFilteredBookings();
 
   return (
-    <div className="booking-list">
-      <div className="booking-header">
-        <h2>Bookings ({bookings.length})</h2>
-        <button 
-          className="btn-add-booking" 
-          onClick={() => setShowAddForm(true)}
-        >
-          + Add New Booking
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="loading">Loading bookings...</div>
-      ) : (
-        <div className="bookings-table">
-          {bookings.length === 0 ? (
-            <div className="no-bookings">
-              <p>No bookings found.</p>
-              <p><strong>First, create the bookings table in Supabase:</strong></p>
-              <ol>
-                <li>Go to your Supabase Dashboard</li>
-                <li>Click on "SQL Editor"</li>
-                <li>Run the SQL script from: <code>database/bookings_schema.sql</code></li>
-                <li>Refresh this page</li>
-              </ol>
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Date & Time</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.map((booking) => (
-                  <tr key={booking.id}>
-                    <td>
-                      <div className="client-info">
-                        <strong>{booking.firstname} {booking.surname}</strong>
-                        <div className="contact-info">
-                          {booking.phone} | {booking.email}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="datetime-info">
-                        <div>{formatDate(booking.selectedslot)}</div>
-                        <div>{formatTime(booking.selectedslot)}</div>
-                      </div>
-                    </td>
-                    <td>{booking.duration} min</td>
-                    <td>
-                      <span className={`status-badge ${booking.bookingstatus}`}>
-                        {booking.bookingstatus}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="actions">
-                        {booking.bookingstatus === 'confirmed' && (
-                          <button
-                            className="btn-start"
-                            onClick={() => handleStartSession(booking)}
-                          >
-                            Start Session
-                          </button>
-                        )}
-                        
-                        {booking.bookingstatus === 'pending' && (
-                          <button
-                            className="btn-confirm"
-                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                          >
-                            Confirm
-                          </button>
-                        )}
-                        
-                        {booking.bookingstatus === 'in_progress' && (
-                          <button
-                            className="btn-complete"
-                            onClick={() => updateBookingStatus(booking.id, 'completed')}
-                          >
-                            Complete
-                          </button>
-                        )}
-
-                        <button
-                          className="btn-call"
-                          onClick={() => window.open(`tel:${booking.phone}`)}
-                        >
-                          📞
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+    <div className="bookings-container">
+      <header className="bookings-header">
+        <div>
+          <div className="header-title">📋 Today's Bookings</div>
+          <div className="header-date">{currentDate}</div>
         </div>
-      )}
+        <div>
+          <button className="btn btn-secondary" onClick={refreshBookings}>🔄 Refresh</button>
+        </div>
+      </header>
 
-      {/* Add Booking Modal */}
-      {showAddForm && (
-        <div className="modal-overlay" onClick={() => setShowAddForm(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Add New Booking</h3>
-            <form onSubmit={addBooking}>
-              <div className="form-row">
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  required
-                  value={newBooking.firstname}
-                  onChange={e => setNewBooking({...newBooking, firstname: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="Surname"
-                  required
-                  value={newBooking.surname}
-                  onChange={e => setNewBooking({...newBooking, surname: e.target.value})}
-                />
-              </div>
-              
-              <div className="form-row">
-                <input
-                  type="tel"
-                  placeholder="Phone"
-                  required
-                  value={newBooking.phone}
-                  onChange={e => setNewBooking({...newBooking, phone: e.target.value})}
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  required
-                  value={newBooking.email}
-                  onChange={e => setNewBooking({...newBooking, email: e.target.value})}
-                />
-              </div>
-
-              <div className="form-row">
-                <input
-                  type="datetime-local"
-                  placeholder="Date & Time"
-                  required
-                  value={newBooking.selectedslot}
-                  onChange={e => setNewBooking({...newBooking, selectedslot: e.target.value})}
-                />
-                <select
-                  value={newBooking.duration}
-                  onChange={e => setNewBooking({...newBooking, duration: parseInt(e.target.value)})}
-                >
-                  <option value={30}>30 minutes</option>
-                  <option value={45}>45 minutes</option>
-                  <option value={60}>60 minutes</option>
-                </select>
-              </div>
-
-              <textarea
-                placeholder="Notes (optional)"
-                value={newBooking.notes}
-                onChange={e => setNewBooking({...newBooking, notes: e.target.value})}
-              />
-
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddForm(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Add Booking
-                </button>
-              </div>
-            </form>
+      <div className="bookings-wrap">
+        {/* Stats */}
+        <div className="stats">
+          <div className="stat-card">
+            <div className="stat-label">Total Bookings</div>
+            <div className="stat-value">{stats.total}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Confirmed</div>
+            <div className="stat-value">{stats.confirmed}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Cash Pending</div>
+            <div className="stat-value">{stats.cashPending}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Completed</div>
+            <div className="stat-value">{stats.completed}</div>
           </div>
         </div>
-      )}
+
+        {/* Filters */}
+        <div className="filters">
+          <button
+            className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => filterBookings('all')}
+          >
+            All
+          </button>
+          <button
+            className={`filter-btn ${filter === 'confirmed' ? 'active' : ''}`}
+            onClick={() => filterBookings('confirmed')}
+          >
+            Ready to Start
+          </button>
+          <button
+            className={`filter-btn ${filter === 'cash-pending' ? 'active' : ''}`}
+            onClick={() => filterBookings('cash-pending')}
+          >
+            Cash Payment Due ({stats.cashPending})
+          </button>
+          <button
+            className={`filter-btn ${filter === 'in-progress' ? 'active' : ''}`}
+            onClick={() => filterBookings('in-progress')}
+          >
+            In Progress
+          </button>
+          <button
+            className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
+            onClick={() => filterBookings('completed')}
+          >
+            Completed ({stats.completed})
+          </button>
+        </div>
+
+        {/* Bookings list */}
+        {loading ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">⏳</div>
+            <p>Loading bookings...</p>
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
+            <p>No bookings found for this filter.</p>
+          </div>
+        ) : (
+          <div className="bookings-list">
+            {filteredBookings.map(booking => (
+              <div key={booking.id} className="booking-card">
+                <div className="time-badge">
+                  <div className="time">{formatTime(booking.selectedslot)}</div>
+                  <div className="duration">{booking.services?.duration_minutes} min</div>
+                </div>
+
+                <div className="booking-info">
+                  <div className="booking-name">{booking.firstname} {booking.surname}</div>
+                  <div className="booking-contact">
+                    <span>📱 {booking.phone}</span>
+                    <span>✉️ {booking.email}</span>
+                    <span>🎵 {booking.services?.service_name}</span>
+                    <span>💰 {formatPrice(booking.price_paid_cents)}</span>
+                  </div>
+                  <div>
+                    {getPaymentBadge(booking)}
+                    <span className={`status-badge ${booking.bookingstatus}`}>
+                      {formatStatus(booking.bookingstatus)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="booking-actions">
+                  {getActionButtons(booking)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

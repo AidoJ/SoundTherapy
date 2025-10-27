@@ -7,6 +7,7 @@ const BookingForm = ({ onBookingComplete }) => {
   const [services, setServices] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -20,11 +21,12 @@ const BookingForm = ({ onBookingComplete }) => {
     paymentMethod: null
   });
 
-  // Load services from database
-  useEffect(() => {
-    loadServices();
-  }, []);
+  // Update progress bar
+  const updateProgress = () => {
+    return (currentStep / 6) * 100;
+  };
 
+  // Load services from database
   const loadServices = async () => {
     try {
       const { data, error } = await supabase
@@ -35,99 +37,84 @@ const BookingForm = ({ onBookingComplete }) => {
 
       if (error) throw error;
       setServices(data || []);
-    } catch (error) {
-      console.error('Error loading services:', error);
-      alert('Failed to load services. Please refresh the page.');
+    } catch (err) {
+      console.error('Error loading services:', err);
     }
   };
 
+  // Generate time slots for today
   const generateTimeSlots = () => {
-    const slots = [];
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
+    const slots = [];
 
-    let startHour = currentHour;
-    let startMinute = Math.ceil(currentMinute / 15) * 15;
-    if (startMinute >= 60) {
-      startHour++;
-      startMinute = 0;
-    }
-
-    // Generate slots until 5pm
-    for (let h = startHour; h < 17; h++) {
-      for (let m = (h === startHour ? startMinute : 0); m < 60; m += 15) {
-        if (h >= 17) break;
+    for (let h = now.getHours(); h < 17; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        if (h === now.getHours() && m <= now.getMinutes()) continue;
         const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        slots.push({ time: timeStr, available: true }); // TODO: Check actual availability from database
+        slots.push({ time: timeStr, available: true }); // In production, check availability
       }
     }
 
     setTimeSlots(slots);
   };
 
-  const checkSafety = (contraindication) => {
-    let updatedContraindications = [...formData.contraindications];
-
-    if (contraindication === 'None') {
-      // If "None apply" is selected, clear all others
-      updatedContraindications = [];
+  // Safety screen validation
+  const checkSafety = (value) => {
+    if (value === 'None') {
       setFormData(prev => ({
         ...prev,
         contraindications: [],
         safetyScreenPassed: true
       }));
     } else {
-      // If a contraindication is selected
-      if (updatedContraindications.includes(contraindication)) {
-        // Remove it
-        updatedContraindications = updatedContraindications.filter(c => c !== contraindication);
+      const updated = [...formData.contraindications];
+      if (updated.includes(value)) {
+        updated.splice(updated.indexOf(value), 1);
       } else {
-        // Add it
-        updatedContraindications.push(contraindication);
+        updated.push(value);
       }
 
       setFormData(prev => ({
         ...prev,
-        contraindications: updatedContraindications,
-        safetyScreenPassed: updatedContraindications.length === 0
+        contraindications: updated,
+        safetyScreenPassed: updated.length === 0
       }));
     }
   };
 
-  const nextStep = (step) => {
-    // Validation for each step
-    if (step === 1) {
+  // Step navigation
+  const nextStep = () => {
+    // Validation
+    if (currentStep === 1) {
       if (!formData.firstName || !formData.surname || !formData.phone || !formData.email) {
         alert('Please fill in all required fields');
         return;
       }
     }
 
-    if (step === 2 && !formData.safetyScreenPassed) {
-      alert('Please confirm that none of the contraindications apply to you');
+    if (currentStep === 2 && !formData.safetyScreenPassed) {
+      alert('Please confirm the safety screen');
       return;
     }
 
-    if (step === 3 && !formData.selectedService) {
+    if (currentStep === 3 && !formData.selectedService) {
       alert('Please select a service');
       return;
     }
 
-    if (step === 4 && !formData.selectedTimeSlot) {
+    if (currentStep === 4 && !formData.selectedTimeSlot) {
       alert('Please select a time slot');
       return;
     }
 
-    if (step === 5 && !formData.paymentMethod) {
+    if (currentStep === 5 && !formData.paymentMethod) {
       alert('Please select a payment method');
       return;
     }
 
-    // Special actions on step transitions
-    if (step === 3) {
-      generateTimeSlots();
-    }
+    // Load data for next step
+    if (currentStep === 2) loadServices();
+    if (currentStep === 3) generateTimeSlots();
 
     setCurrentStep(currentStep + 1);
     window.scrollTo(0, 0);
@@ -138,13 +125,13 @@ const BookingForm = ({ onBookingComplete }) => {
     window.scrollTo(0, 0);
   };
 
+  // Confirm booking
   const confirmBooking = async () => {
     setLoading(true);
 
     try {
-      // Create booking in database
       const bookingData = {
-        userid: `guest_${Date.now()}`, // TODO: Use actual user ID if logged in
+        userid: `guest_${Date.now()}`,
         firstname: formData.firstName,
         surname: formData.surname,
         phone: formData.phone,
@@ -158,8 +145,7 @@ const BookingForm = ({ onBookingComplete }) => {
         price_paid_cents: formData.selectedService.price_cents,
         safety_screen_completed: true,
         contraindications: JSON.stringify([]),
-        cash_received: false,
-        notes: formData.paymentMethod === 'cash' ? 'Cash payment on arrival' : 'Online payment'
+        cash_received: false
       };
 
       const { data, error } = await supabase
@@ -170,46 +156,97 @@ const BookingForm = ({ onBookingComplete }) => {
 
       if (error) throw error;
 
-      // Handle payment method
       if (formData.paymentMethod === 'stripe') {
-        // TODO: Redirect to Stripe payment
+        // In production: redirect to Stripe
         alert('Redirecting to Stripe payment...');
-        // window.location.href = `/api/create-stripe-session?bookingId=${data.id}`;
+        // window.location.href = stripeCheckoutUrl;
       } else {
-        // Cash payment - show success
-        if (onBookingComplete) {
-          onBookingComplete(data);
-        }
-        setCurrentStep(7); // Success screen
+        setShowSuccess(true);
+        if (onBookingComplete) onBookingComplete(data);
       }
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      alert('Failed to create booking. Please try again.');
+    } catch (err) {
+      console.error('Error creating booking:', err);
+      alert('Error creating booking. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const progressPercent = (currentStep / 6) * 100;
+  // Render based on current state
+  if (showSuccess) {
+    return (
+      <div className="booking-form-container">
+        <div className="booking-step">
+          <div className="success-banner">
+            <h2>✅ Booking Confirmed!</h2>
+            <p>Your session has been booked successfully.</p>
+          </div>
+
+          <div className="booking-summary">
+            <div className="summary-row">
+              <span>Name:</span>
+              <span>{formData.firstName} {formData.surname}</span>
+            </div>
+            <div className="summary-row">
+              <span>Contact:</span>
+              <span>{formData.phone}</span>
+            </div>
+            <div className="summary-row">
+              <span>Service:</span>
+              <span>{formData.selectedService.service_name}</span>
+            </div>
+            <div className="summary-row">
+              <span>Time:</span>
+              <span>{formData.selectedTimeSlot}</span>
+            </div>
+            <div className="summary-row">
+              <span>Payment:</span>
+              <span>{formData.paymentMethod === 'stripe' ? 'Card (Paid)' : 'Cash (On arrival)'}</span>
+            </div>
+            <div className="summary-row total">
+              <span>Total:</span>
+              <span>${(formData.selectedService.price_cents / 100).toFixed(2)}</span>
+            </div>
+          </div>
+
+          {formData.paymentMethod === 'cash' && (
+            <div className="info-banner" style={{marginTop: '16px'}}>
+              <strong>📱 What's Next?</strong><br/>
+              • You'll receive an SMS reminder 15 minutes before your session<br/>
+              • Please bring ${(formData.selectedService.price_cents / 100).toFixed(2)} cash when you arrive<br/>
+              • Look for the Sound Healing booth at the market<br/>
+              • Arrive 5 minutes early to check in
+            </div>
+          )}
+
+          <button className="btn-primary" onClick={() => window.location.reload()} style={{marginTop: '20px'}}>
+            Book Another Session
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="booking-form-container">
+      <header className="booking-header">
+        📅 Book Your Sound Healing Session
+      </header>
+
       {/* Progress bar */}
       <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progressPercent}%` }}></div>
+        <div className="progress-fill" style={{ width: `${updateProgress()}%` }}></div>
       </div>
 
       {/* Info banner */}
-      {currentStep <= 6 && (
-        <div className="info-banner">
-          <strong>🎪 Market Session Booking</strong><br />
-          Book your session today! Pay online with card or pay cash when you arrive.
-        </div>
-      )}
+      <div className="info-banner">
+        <strong>🎪 Market Session Booking</strong><br/>
+        Book your session today! Pay online with card or pay cash when you arrive. You'll receive SMS & email reminders.
+      </div>
 
       {/* STEP 1: Client Details */}
       {currentStep === 1 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Step 1: Your Details</h2>
           <div className="form-grid">
             <div>
@@ -217,9 +254,8 @@ const BookingForm = ({ onBookingComplete }) => {
               <input
                 type="text"
                 value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                 placeholder="First name"
-                required
               />
             </div>
             <div>
@@ -227,9 +263,8 @@ const BookingForm = ({ onBookingComplete }) => {
               <input
                 type="text"
                 value={formData.surname}
-                onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
+                onChange={(e) => setFormData({...formData, surname: e.target.value})}
                 placeholder="Surname"
-                required
               />
             </div>
             <div>
@@ -237,9 +272,8 @@ const BookingForm = ({ onBookingComplete }) => {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 placeholder="04XX XXX XXX"
-                required
               />
               <span className="field-hint">For session reminders via SMS</span>
             </div>
@@ -248,47 +282,34 @@ const BookingForm = ({ onBookingComplete }) => {
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 placeholder="your@email.com"
-                required
               />
             </div>
           </div>
           <div className="step-actions">
-            <button className="btn-primary" onClick={() => nextStep(1)}>
-              Continue to Safety Screen →
-            </button>
+            <button className="btn-primary" onClick={nextStep}>Continue to Safety Screen →</button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* STEP 2: Safety Screen */}
       {currentStep === 2 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Step 2: Safety Screen</h2>
-          <p className="step-description">
-            Please confirm you do not have any contraindications. This ensures your safety during the session.
-          </p>
+          <p className="step-description">Please confirm you do not have any contraindications. This ensures your safety during the session.</p>
 
           <div className="contraindications-list">
-            {[
-              'Pacemakers/Implants',
-              'Deep Vein Thrombosis',
-              'Bleeding Disorders',
-              'Recent Surgery',
-              'Severe Low Blood Pressure',
-              'Seizure Disorders',
-              'Acute Inflammation',
-              'Pregnancy',
-              'Active Cancer'
-            ].map(item => (
+            {['Pacemakers/Implants', 'Deep Vein Thrombosis', 'Bleeding Disorders', 'Recent Surgery',
+              'Severe Low Blood Pressure', 'Seizure Disorders', 'Acute Inflammation', 'Pregnancy',
+              'Active Cancer Treatment'].map(item => (
               <label key={item} className="chip">
                 <input
                   type="checkbox"
                   checked={formData.contraindications.includes(item)}
                   onChange={() => checkSafety(item)}
                 />
-                {item}
+                <strong>{item}</strong>
               </label>
             ))}
           </div>
@@ -306,7 +327,7 @@ const BookingForm = ({ onBookingComplete }) => {
 
           {formData.contraindications.length > 0 && (
             <div className="error-banner">
-              <strong>⚠️ Session Not Suitable</strong><br />
+              <strong>⚠️ Session Not Suitable</strong><br/>
               Based on your responses, vibroacoustic therapy may not be suitable. Please consult your healthcare provider.
             </div>
           )}
@@ -315,18 +336,18 @@ const BookingForm = ({ onBookingComplete }) => {
             <button className="btn-secondary" onClick={prevStep}>← Back</button>
             <button
               className="btn-primary"
-              onClick={() => nextStep(2)}
+              onClick={nextStep}
               disabled={!formData.safetyScreenPassed}
             >
               Continue to Select Service →
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* STEP 3: Select Service */}
       {currentStep === 3 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Step 3: Choose Your Session</h2>
           <p className="step-description">Select the duration that suits your needs</p>
 
@@ -335,11 +356,11 @@ const BookingForm = ({ onBookingComplete }) => {
               <div
                 key={service.id}
                 className={`service-card ${formData.selectedService?.id === service.id ? 'selected' : ''}`}
-                onClick={() => setFormData({ ...formData, selectedService: service })}
+                onClick={() => setFormData({...formData, selectedService: service})}
               >
                 <div className="service-header">
                   <div>
-                    <span className="service-icon">{service.icon_emoji}</span>
+                    <span className="service-icon">{service.icon_emoji || '🎵'}</span>
                     <span className="service-name">{service.service_name}</span>
                   </div>
                   <div className="service-price">${(service.price_cents / 100).toFixed(2)}</div>
@@ -354,27 +375,27 @@ const BookingForm = ({ onBookingComplete }) => {
             <button className="btn-secondary" onClick={prevStep}>← Back</button>
             <button
               className="btn-primary"
-              onClick={() => nextStep(3)}
+              onClick={nextStep}
               disabled={!formData.selectedService}
             >
               Continue to Select Time →
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* STEP 4: Select Time Slot */}
       {currentStep === 4 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Step 4: Select Time</h2>
           <p className="step-description">Choose your preferred time</p>
 
           <div className="time-slots-grid">
-            {timeSlots.map(slot => (
+            {timeSlots.map((slot, idx) => (
               <div
-                key={slot.time}
+                key={idx}
                 className={`time-slot ${formData.selectedTimeSlot === slot.time ? 'selected' : ''} ${!slot.available ? 'unavailable' : ''}`}
-                onClick={() => slot.available && setFormData({ ...formData, selectedTimeSlot: slot.time })}
+                onClick={() => slot.available && setFormData({...formData, selectedTimeSlot: slot.time})}
               >
                 {slot.time}
               </div>
@@ -385,25 +406,25 @@ const BookingForm = ({ onBookingComplete }) => {
             <button className="btn-secondary" onClick={prevStep}>← Back</button>
             <button
               className="btn-primary"
-              onClick={() => nextStep(4)}
+              onClick={nextStep}
               disabled={!formData.selectedTimeSlot}
             >
               Continue to Payment →
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* STEP 5: Payment Method */}
       {currentStep === 5 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Step 5: Payment Method</h2>
           <p className="step-description">How would you like to pay?</p>
 
           <div className="payment-options">
             <div
               className={`payment-option ${formData.paymentMethod === 'stripe' ? 'selected' : ''}`}
-              onClick={() => setFormData({ ...formData, paymentMethod: 'stripe' })}
+              onClick={() => setFormData({...formData, paymentMethod: 'stripe'})}
             >
               <div className="payment-icon">💳</div>
               <div className="payment-info">
@@ -414,7 +435,7 @@ const BookingForm = ({ onBookingComplete }) => {
 
             <div
               className={`payment-option ${formData.paymentMethod === 'cash' ? 'selected' : ''}`}
-              onClick={() => setFormData({ ...formData, paymentMethod: 'cash' })}
+              onClick={() => setFormData({...formData, paymentMethod: 'cash'})}
             >
               <div className="payment-icon">💵</div>
               <div className="payment-info">
@@ -428,18 +449,18 @@ const BookingForm = ({ onBookingComplete }) => {
             <button className="btn-secondary" onClick={prevStep}>← Back</button>
             <button
               className="btn-primary"
-              onClick={() => nextStep(5)}
+              onClick={nextStep}
               disabled={!formData.paymentMethod}
             >
               Continue to Summary →
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* STEP 6: Booking Summary */}
       {currentStep === 6 && (
-        <div className="booking-step">
+        <section className="booking-step">
           <h2>Booking Summary</h2>
 
           <div className="booking-summary">
@@ -470,8 +491,8 @@ const BookingForm = ({ onBookingComplete }) => {
           </div>
 
           {formData.paymentMethod === 'cash' && (
-            <div className="info-banner" style={{ marginTop: '16px' }}>
-              <strong>💵 Cash Payment</strong><br />
+            <div className="info-banner" style={{marginTop: '16px'}}>
+              <strong>💵 Cash Payment</strong><br/>
               Your booking is reserved! Please bring exact cash payment when you arrive at the market.
             </div>
           )}
@@ -486,58 +507,7 @@ const BookingForm = ({ onBookingComplete }) => {
               {loading ? 'Processing...' : (formData.paymentMethod === 'stripe' ? 'Proceed to Payment →' : 'Reserve Booking →')}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* STEP 7: Success */}
-      {currentStep === 7 && (
-        <div className="booking-step">
-          <div className="success-banner">
-            <h2>✅ Booking Confirmed!</h2>
-            <p>Your session has been booked successfully.</p>
-          </div>
-
-          <div className="booking-summary">
-            <div className="summary-row">
-              <span>Name:</span>
-              <span>{formData.firstName} {formData.surname}</span>
-            </div>
-            <div className="summary-row">
-              <span>Service:</span>
-              <span>{formData.selectedService?.service_name}</span>
-            </div>
-            <div className="summary-row">
-              <span>Time:</span>
-              <span>{formData.selectedTimeSlot}</span>
-            </div>
-            <div className="summary-row total">
-              <span>Total:</span>
-              <span>${(formData.selectedService?.price_cents / 100).toFixed(2)}</span>
-            </div>
-          </div>
-
-          {formData.paymentMethod === 'cash' ? (
-            <div className="info-banner" style={{ marginTop: '16px' }}>
-              <strong>📱 What's Next?</strong><br />
-              • You'll receive an SMS reminder 15 minutes before your session<br />
-              • Please bring ${(formData.selectedService?.price_cents / 100).toFixed(2)} cash when you arrive<br />
-              • Look for the Sound Healing booth at the market<br />
-              • Arrive 5 minutes early to check in
-            </div>
-          ) : (
-            <div className="success-banner" style={{ marginTop: '16px' }}>
-              <strong>✅ Payment Confirmed</strong><br />
-              • You'll receive an SMS reminder 15 minutes before your session<br />
-              • Check your email for booking confirmation<br />
-              • Look for the Sound Healing booth at the market<br />
-              • Arrive 5 minutes early to check in
-            </div>
-          )}
-
-          <button className="btn-primary" onClick={() => window.location.reload()}>
-            Book Another Session
-          </button>
-        </div>
+        </section>
       )}
     </div>
   );
