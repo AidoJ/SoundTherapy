@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
