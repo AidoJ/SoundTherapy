@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import WelcomeScreen from './components/WelcomeScreen';
-import QuickBookingForm from './components/QuickBookingForm';
 import BookingForm from './components/BookingForm';
 import BookingSuccess from './components/BookingSuccess';
 import BookingsList from './components/BookingsList';
@@ -21,22 +20,12 @@ function App() {
   const navigate = useNavigate();
 
   const handleStart = () => {
-    navigate('/quick-booking');
+    navigate('/booking');
   };
 
   const handleBookingComplete = (booking) => {
     setBookingData(booking);
-    navigate('/intake');
-  };
-
-  const handleMarketBookingComplete = (booking) => {
-    // Redirect to a success page or show message
     navigate('/booking-success');
-  };
-
-  const handleRequireFullIntake = (healthData) => {
-    // If contraindications found, go directly to full intake form
-    navigate('/intake');
   };
 
   const handleFormSubmit = async (formData) => {
@@ -147,21 +136,10 @@ function App() {
           {/* Home / Welcome Screen */}
           <Route path="/" element={<WelcomeScreen onStart={handleStart} />} />
 
-          {/* Quick Booking (Original Flow) */}
-          <Route
-            path="/quick-booking"
-            element={
-              <QuickBookingForm
-                onBookingComplete={handleBookingComplete}
-                onRequireFullIntake={handleRequireFullIntake}
-              />
-            }
-          />
-
-          {/* Market Booking Form (New Flow) */}
+          {/* Market Booking Form */}
           <Route
             path="/booking"
-            element={<BookingForm onBookingComplete={handleMarketBookingComplete} />}
+            element={<BookingForm onBookingComplete={handleBookingComplete} />}
           />
 
           {/* Booking Success Page */}
