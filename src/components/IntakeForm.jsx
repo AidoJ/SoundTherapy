@@ -72,15 +72,24 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           if (fetchError) throw fetchError;
 
           if (booking) {
+            // Parse contraindications from JSON string
+            let contraindications = [];
+            try {
+              contraindications = typeof booking.contraindications === 'string'
+                ? JSON.parse(booking.contraindications)
+                : booking.contraindications || [];
+            } catch (e) {
+              console.error('Error parsing contraindications:', e);
+              contraindications = [];
+            }
+
             // Auto-fill form from booking data
             setFormData(prev => ({
               ...prev,
               fullName: `${booking.firstname} ${booking.surname}`,
               phone: booking.phone,
               email: booking.email,
-              healthConcerns: booking.contraindications && booking.contraindications.length > 0
-                ? booking.contraindications
-                : ['none']
+              healthConcerns: contraindications.length > 0 ? contraindications : ['none']
             }));
 
             // Mark booking as in-progress
@@ -705,7 +714,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           </div>
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
-              <label htmlFor="therapistSignature">Therapist Signature *</label>
+              <label htmlFor="therapistSignature">Client Signature *</label>
               <div className="signature-pad">
                 <canvas
                   ref={therapistSignatureCanvasRef}

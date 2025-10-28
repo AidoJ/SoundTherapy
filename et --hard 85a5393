@@ -1,0 +1,151 @@
+[33m85a5393[m Add chemotherapy/cancer treatment to health check and implement contraindication validation
+[1mdiff --git a/EMAILJS_SETUP.md b/EMAILJS_SETUP.md[m
+[1mindex 8dd09f3..18e6e21 100644[m
+[1m--- a/EMAILJS_SETUP.md[m
+[1m+++ b/EMAILJS_SETUP.md[m
+[36m@@ -79,3 +79,41 @@[m [mAfter creating the `Vibro_Followup` template in your EmailJS dashboard:[m
+ 4. Check that both emails are sent successfully[m
+ [m
+ The app will show clear feedback about which emails were sent successfully.[m
+[32m+[m
+[32m+[m[32m## Troubleshooting[m
+[32m+[m
+[32m+[m[32mIf you're getting 400 errors, check these common issues:[m
+[32m+[m
+[32m+[m[32m### 1. Template ID Mismatch[m
+[32m+[m[32mThe most common issue is that your template ID in EmailJS doesn't match exactly.[m[41m [m
+[32m+[m
+[32m+[m[32m**Check your EmailJS dashboard:**[m
+[32m+[m[32m- Go to https://dashboard.emailjs.com/admin/templates[m
+[32m+[m[32m- Look at the exact Template ID of your template[m
+[32m+[m[32m- It should be exactly `Vibro_Followup` (case-sensitive)[m
+[32m+[m
+[32m+[m[32m**If your template ID is different:**[m
+[32m+[m[32mAdd this environment variable to your Netlify deployment:[m
+[32m+[m[32m```[m
+[32m+[m[32mVITE_EMAILJS_VIBRO_FOLLOWUP_TEMPLATE=your_actual_template_id[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### 2. Template Variables[m
+[32m+[m[32mMake sure your template uses the exact variable names from `email-template.html`:[m
+[32m+[m[32m- `{{to_name}}`, `{{to_email}}`, `{{session_date}}`, etc.[m
+[32m+[m
+[32m+[m[32m### 3. Debug Logging[m
+[32m+[m[32mThe app now shows detailed debug information in the console:[m
+[32m+[m[32m- EmailJS configuration status[m
+[32m+[m[32m- Template ID being used[m
+[32m+[m[32m- Full error messages[m
+[32m+[m
+[32m+[m[32mCheck the browser console for detailed error information.[m
+[32m+[m
+[32m+[m[32m### 4. Test EmailJS Connection[m
+[32m+[m[32mYou can test the EmailJS connection by opening the browser console and running:[m
+[32m+[m[32m```javascript[m
+[32m+[m[32m// Import the test function and run it[m
+[32m+[m[32mimport { testEmailJSConnection } from './src/services/emailService.js';[m
+[32m+[m[32mtestEmailJSConnection();[m
+[32m+[m[32m```[m
+[1mdiff --git a/src/components/IntakeForm.jsx b/src/components/IntakeForm.jsx[m
+[1mindex 8fac8ff..9e0d54f 100644[m
+[1m--- a/src/components/IntakeForm.jsx[m
+[1m+++ b/src/components/IntakeForm.jsx[m
+[36m@@ -61,6 +61,7 @@[m [mconst IntakeForm = ({ onSubmit }) => {[m
+       formData.phone,[m
+       formData.intention.length > 0,[m
+       formData.selectedFrequencies.length > 0,[m
+[32m+[m[32m      formData.healthConcerns.length > 0, // Health concerns now required[m
+       formData.consentGiven,[m
+       formData.signature[m
+     ];[m
+[36m@@ -184,6 +185,23 @@[m [mconst IntakeForm = ({ onSubmit }) => {[m
+       return;[m
+     }[m
+ [m
+[32m+[m[32m    // Health concerns validation - now required[m
+[32m+[m[32m    if (formData.healthConcerns.length === 0) {[m
+[32m+[m[32m      alert('Please complete the Health & Comfort Check section');[m
+[32m+[m[32m      return;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Contraindication check[m
+[32m+[m[32m    const hasContraindications = formData.healthConcerns.some(concern => concern !== 'none');[m
+[32m+[m[32m    if (hasContraindications) {[m
+[32m+[m[32m      const confirmed = window.confirm([m
+[32m+[m[32m        'Unfortunately you have checked an existing condition that has a contra-indication, we can not proceed with this treatment unless you have a consent form from your GP or attending Physician. Understood?'[m
+[32m+[m[32m      );[m
+[32m+[m[32m      if (!confirmed) {[m
+[32m+[m[32m        return;[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     if (!formData.consentGiven) {[m
+       alert('Please provide consent to continue');[m
+       return;[m
+[36m@@ -389,8 +407,8 @@[m [mconst IntakeForm = ({ onSubmit }) => {[m
+ [m
+         {/* Health Check */}[m
+         <section className="form-card">[m
+[31m-          <h3>3. Health & Comfort Check</h3>[m
+[31m-          <p className="form-help">Please check any that apply:</p>[m
+[32m+[m[32m          <h3>3. Health & Comfort Check <span style={{color: 'red'}}>*</span></h3>[m
+[32m+[m[32m          <p className="form-help">Please check any that apply (required):</p>[m
+           <div className="chips">[m
+             {[[m
+               { value: 'pacemaker', label: 'Pacemakers/Implants' },[m
+[36m@@ -402,6 +420,7 @@[m [mconst IntakeForm = ({ onSubmit }) => {[m
+               { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },[m
+               { value: 'psychotic', label: 'Psychotic Conditions' },[m
+               { value: 'pregnancy', label: 'Pregnancy' },[m
+[32m+[m[32m              { value: 'chemotherapy', label: 'Chemotherapy and Active Cancer Treatment' },[m
+               { value: 'none', label: 'None apply' }[m
+             ].map(concern => ([m
+               <label key={concern.value} className="chip health-chip">[m
+[1mdiff --git a/src/services/emailService.js b/src/services/emailService.js[m
+[1mindex c2498a8..9c8c198 100644[m
+[1m--- a/src/services/emailService.js[m
+[1m+++ b/src/services/emailService.js[m
+[36m@@ -11,6 +11,7 @@[m [mconst PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;[m
+ const CLIENT_CONFIRMATION_TEMPLATE = import.meta.env.VITE_EMAILJS_CLIENT_TEMPLATE || 'client_confirmation';[m
+ const PRACTITIONER_NOTIFICATION_TEMPLATE = import.meta.env.VITE_EMAILJS_PRACTITIONER_TEMPLATE || 'practitioner_notification';[m
+ const SESSION_SUMMARY_TEMPLATE = import.meta.env.VITE_EMAILJS_SUMMARY_TEMPLATE || 'Vibro_Followup';[m
+[32m+[m[32mconst VIBRO_FOLLOWUP_TEMPLATE = import.meta.env.VITE_EMAILJS_VIBRO_FOLLOWUP_TEMPLATE || 'Vibro_Followup';[m
+ [m
+ // Initialize EmailJS[m
+ if (PUBLIC_KEY) {[m
+[36m@@ -217,12 +218,18 @@[m [mexport const sendSessionSummaryEmail = async (sessionData, frequencyMetadata, th[m
+  * @returns {Promise<Object>} Email send results[m
+  */[m
+ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, therapistNotes = '') => {[m
+[32m+[m[32m  console.log('🚀 Starting Vibro_Followup email send...');[m
+[32m+[m[32m  console.log('EmailJS Config:', { SERVICE_ID, PUBLIC_KEY: PUBLIC_KEY ? 'SET' : 'NOT SET' });[m
+[32m+[m[32m  console.log('Template ID:', VIBRO_FOLLOWUP_TEMPLATE);[m
+[32m+[m[41m  [m
+   if (!SERVICE_ID || !PUBLIC_KEY) {[m
+     console.warn('EmailJS not configured - skipping Vibro_Followup emails');[m
+     return { success: false, error: 'EmailJS not configured' };[m
+   }[m
+ [m
+   const practitionerEmail = import.meta.env.VITE_PRACTITIONER_EMAIL;[m
+[32m+[m[32m  console.log('Practitioner email:', practitionerEmail);[m
+[32m+[m[41m  [m
+   if (!practitionerEmail) {[m
+     console.warn('Practitioner email not configured');[m
+     return { success: false, error: 'Practitioner email not set' };[m
+[36m@@ -297,8 +304,8 @@[m [mexport const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th[m
+ [m
+     // Send both emails[m
+     const [clientResult, practitionerResult] = await Promise.allSettled([[m
+[31m-      emailjs.send(SERVICE_ID, 'Vibro_Followup', clientTemplateParams),[m
+[31m-      emailjs.send(SERVICE_ID, 'Vibro_Followup', practitionerTemplateParams)[m
+[32m+[m[32m      emailjs.send(SERVICE_ID, VIBRO_FOLLOWUP_TEMPLATE, clientTemplateParams),[m
+[32m+[m[32m      emailjs.send(SERVICE_ID, VIBRO_FOLLOWUP_TEMPLATE, practitionerTemplateParams)[m
+     ]);[m
+ [m
+     const results = {[m
+[36m@@ -317,12 +324,18 @@[m [mexport const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th[m
+       console.log('✅ Vibro_Followup email sent to client successfully');[m
+     } else {[m
+       console.error('❌ Failed to send Vibro_Followup email to client:', results.client.error);[m
+[32m+[m[32m      if (results.client.error?.text) {[m
+[32m+[m[32m        console.error('Full client error:', results.client.error.text);[m
+[32m+[m

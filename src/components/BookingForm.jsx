@@ -17,6 +17,7 @@ const BookingForm = ({ onBookingComplete }) => {
     contraindications: [],
     safetyScreenPassed: false,
     selectedService: null,
+    selectedDate: '',
     selectedTimeSlot: null,
     paymentMethod: null
   });
@@ -42,20 +43,54 @@ const BookingForm = ({ onBookingComplete }) => {
     }
   };
 
-  // Generate time slots for today
-  const generateTimeSlots = () => {
-    const now = new Date();
-    const slots = [];
+  // Generate time slots for selected date and check availability
+  const generateTimeSlots = async (selectedDate) => {
+    if (!selectedDate) return;
 
-    for (let h = now.getHours(); h < 17; h++) {
-      for (let m = 0; m < 60; m += 15) {
-        if (h === now.getHours() && m <= now.getMinutes()) continue;
-        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        slots.push({ time: timeStr, available: true }); // In production, check availability
+    try {
+      const now = new Date();
+      const selectedDay = new Date(selectedDate);
+      const isToday = selectedDate === now.toISOString().split('T')[0];
+
+      // Generate all possible slots
+      const allSlots = [];
+      const startHour = isToday ? now.getHours() : 9;
+      const startMinute = isToday ? now.getMinutes() : 0;
+
+      for (let h = startHour; h < 17; h++) {
+        for (let m = 0; m < 60; m += 15) {
+          if (isToday && h === now.getHours() && m <= now.getMinutes()) continue;
+          const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          allSlots.push(timeStr);
+        }
       }
-    }
 
-    setTimeSlots(slots);
+      // Get existing bookings for this date
+      const { data: existingBookings, error } = await supabase
+        .from('bookings')
+        .select('selectedslot')
+        .gte('selectedslot', `${selectedDate}T00:00:00`)
+        .lt('selectedslot', `${selectedDate}T23:59:59`);
+
+      if (error) throw error;
+
+      // Extract booked times
+      const bookedTimes = existingBookings?.map(booking => {
+        const timeString = new Date(booking.selectedslot).toTimeString().slice(0, 5);
+        return timeString;
+      }) || [];
+
+      // Filter out booked slots
+      const availableSlots = allSlots.map(time => ({
+        time,
+        available: !bookedTimes.includes(time)
+      }));
+
+      setTimeSlots(availableSlots);
+    } catch (err) {
+      console.error('Error generating time slots:', err);
+      setTimeSlots([]);
+    }
   };
 
   // Safety screen validation
@@ -102,6 +137,11 @@ const BookingForm = ({ onBookingComplete }) => {
       return;
     }
 
+    if (currentStep === 4 && !formData.selectedDate) {
+      alert('Please select a date');
+      return;
+    }
+
     if (currentStep === 4 && !formData.selectedTimeSlot) {
       alert('Please select a time slot');
       return;
@@ -114,7 +154,9 @@ const BookingForm = ({ onBookingComplete }) => {
 
     // Load data for next step
     if (currentStep === 2) loadServices();
-    if (currentStep === 3) generateTimeSlots();
+    if (currentStep === 3 && formData.selectedDate) {
+      generateTimeSlots(formData.selectedDate);
+    }
 
     setCurrentStep(currentStep + 1);
     window.scrollTo(0, 0);
@@ -137,7 +179,7 @@ const BookingForm = ({ onBookingComplete }) => {
         phone: formData.phone,
         email: formData.email,
         service_id: formData.selectedService.id,
-        selectedslot: new Date().toISOString().split('T')[0] + 'T' + formData.selectedTimeSlot + ':00',
+        selectedslot: formData.selectedDate + 'T' + formData.selectedTimeSlot + ':00',
         duration: formData.selectedService.duration_minutes,
         paymentmethod: formData.paymentMethod === 'stripe' ? 'Stripe' : 'Cash',
         paymentstatus: formData.paymentMethod === 'stripe' ? 'paid' : 'pending',
@@ -194,6 +236,10 @@ const BookingForm = ({ onBookingComplete }) => {
             <div className="summary-row">
               <span>Service:</span>
               <span>{formData.selectedService.service_name}</span>
+            </div>
+            <div className="summary-row">
+              <span>Date:</span>
+              <span>{new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
             </div>
             <div className="summary-row">
               <span>Time:</span>
@@ -384,30 +430,57 @@ const BookingForm = ({ onBookingComplete }) => {
         </section>
       )}
 
-      {/* STEP 4: Select Time Slot */}
+      {/* STEP 4: Select Date & Time */}
       {currentStep === 4 && (
         <section className="booking-step">
-          <h2>Step 4: Select Time</h2>
-          <p className="step-description">Choose your preferred time</p>
+          <h2>Step 4: Select Date & Time</h2>
+          <p className="step-description">Choose your preferred date and time</p>
 
-          <div className="time-slots-grid">
-            {timeSlots.map((slot, idx) => (
-              <div
-                key={idx}
-                className={`time-slot ${formData.selectedTimeSlot === slot.time ? 'selected' : ''} ${!slot.available ? 'unavailable' : ''}`}
-                onClick={() => slot.available && setFormData({...formData, selectedTimeSlot: slot.time})}
-              >
-                {slot.time}
-              </div>
-            ))}
+          <div className="form-grid">
+            <div>
+              <label>Select Date <span className="required">*</span></label>
+              <input
+                type="date"
+                value={formData.selectedDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setFormData({...formData, selectedDate: e.target.value, selectedTimeSlot: null});
+                  generateTimeSlots(e.target.value);
+                }}
+                style={{marginBottom: '20px'}}
+              />
+            </div>
           </div>
+
+          {formData.selectedDate && (
+            <>
+              <p className="step-description">Available time slots for {new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <div className="time-slots-grid">
+                {timeSlots.length === 0 ? (
+                  <p style={{gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)'}}>No available time slots for this date</p>
+                ) : (
+                  timeSlots.map((slot, idx) => (
+                    <div
+                      key={idx}
+                      className={`time-slot ${formData.selectedTimeSlot === slot.time ? 'selected' : ''} ${!slot.available ? 'unavailable' : ''}`}
+                      onClick={() => slot.available && setFormData({...formData, selectedTimeSlot: slot.time})}
+                      title={!slot.available ? 'This time slot is already booked' : ''}
+                    >
+                      {slot.time}
+                      {!slot.available && <span style={{display: 'block', fontSize: '10px'}}>Booked</span>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
 
           <div className="step-actions">
             <button className="btn-secondary" onClick={prevStep}>← Back</button>
             <button
               className="btn-primary"
               onClick={nextStep}
-              disabled={!formData.selectedTimeSlot}
+              disabled={!formData.selectedDate || !formData.selectedTimeSlot}
             >
               Continue to Payment →
             </button>
@@ -475,6 +548,10 @@ const BookingForm = ({ onBookingComplete }) => {
             <div className="summary-row">
               <span>Service:</span>
               <span>{formData.selectedService?.service_name} ({formData.selectedService?.duration_minutes} min)</span>
+            </div>
+            <div className="summary-row">
+              <span>Date:</span>
+              <span>{new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
             </div>
             <div className="summary-row">
               <span>Time:</span>

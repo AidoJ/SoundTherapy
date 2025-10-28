@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Book Your Sound Healing Session</title>
+<style>
+  :root{
+    --bg:#f6fbfb; --card:#fff; --ink:#1e2a2a; --muted:#5e6b6b; --accent:#008e8c; --accent-2:#6bd6c8;
+    --warn:#c2410c; --ok:#0f766e; --ring:0 0 0 3px rgba(0,142,140,.18); --shadow:0 14px 36px rgba(0,0,0,.08);
+    --radius:16px; --chip:#eef7f6; --chip-b:#d9eeeb; --error:#dc2626;
+  }
+  html,body{height:100%;}
+  body{margin:0;background:#f8faf9;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  header{
+    background:var(--accent); color:#fff; padding:18px 20px; text-align:center; font-weight:700; font-size:clamp(18px,3vw,22px);
+    box-shadow:0 6px 18px rgba(0,0,0,.06);
+  }
+  .wrap{max-width:680px;margin:24px auto 80px;padding:0 16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin:14px 0}
+  .grid{display:grid;gap:12px}
+  @media(min-width:760px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+  label{font-weight:600;font-size:14px;display:block;margin-bottom:6px}
+  h2{color:var(--accent);margin:8px 0 10px;font-size:20px}
+  .muted{color:var(--muted);font-size:13px}
+  input[type=text],input[type=email],input[type=tel],textarea{width:100%;padding:12px;border:1px solid #d8e9e6;border-radius:12px;background:#fbfefd;font-size:14px;transition:.15s;box-sizing:border-box}
+  input:focus,textarea:focus{outline:none;box-shadow:var(--ring);border-color:var(--accent)}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .chip{display:inline-flex;gap:8px;align-items:center;padding:10px 14px;border-radius:999px;background:var(--chip);border:2px solid var(--chip-b);cursor:pointer;transition:.15s}
+  .chip:hover{background:#e0f2f1;border-color:var(--accent)}
+  .chip input{accent-color:var(--accent)}
+  .chip.selected{background:#e7f7f4;border-color:var(--accent)}
+  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+  .slot{padding:16px;border:2px solid #d8e9e6;border-radius:12px;background:#fbfefd;cursor:pointer;text-align:center;transition:.15s;display:flex;flex-direction:column;gap:6px}
+  .slot:hover{border-color:var(--accent);background:#f0f9f8}
+  .slot.selected{border-color:var(--accent);background:#e7f7f4;box-shadow:var(--ring)}
+  .slot .time{font-weight:700;font-size:16px;color:var(--accent)}
+  .slot .duration{font-size:13px;color:var(--muted)}
+  .slot .price{font-weight:600;font-size:15px;color:var(--ok)}
+  .slot.unavailable{opacity:.4;cursor:not-allowed;background:#f5f5f5}
+  .slot.unavailable:hover{border-color:#d8e9e6;background:#f5f5f5}
+  button{padding:14px 20px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(0,142,140,.25);font-size:16px;width:100%}
+  button:hover{background:#006d6b}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .summary{background:#e7f7f4;border-left:4px solid var(--accent);padding:16px;border-radius:8px;margin-top:16px}
+  .summary-row{display:flex;justify-content:space-between;margin:8px 0;font-size:14px}
+  .summary-row.total{font-weight:700;font-size:16px;padding-top:12px;border-top:2px solid #d4efea;margin-top:12px}
+  .info-banner{background:#fff3cd;border-left:4px solid #ffc107;padding:14px;border-radius:8px;margin-bottom:16px;font-size:14px;line-height:1.6}
+  .error-banner{background:#fee;border-left:4px solid var(--error);padding:16px;border-radius:8px;margin-top:16px;font-size:14px;line-height:1.6;color:var(--error)}
+  .required{color:#e11d48}
+  .step{display:none}
+  .step.active{display:block}
+  .progress-bar{background:#e0e0e0;height:8px;border-radius:999px;margin-bottom:24px;overflow:hidden}
+  .progress-fill{background:var(--accent);height:100%;width:0;transition:width .3s}
+  .info{display:inline-flex;justify-content:center;align-items:center;width:18px;height:18px;border-radius:999px;margin-left:6px;background:#e7f7f4;border:1px solid #cfe7e4;color:#0a6e6a;font-weight:800;font-size:12px;cursor:pointer;position:relative;user-select:none}
+  .info .tooltip{display:none;position:absolute;top:22px;left:0;z-index:30;min-width:240px;max-width:320px;padding:10px 12px;background:#fff;border:1px solid #dbeeee;border-radius:12px;box-shadow:var(--shadow);color:#007e8c;font-weight:400;line-height:1.45}
+  .info:hover .tooltip{display:block}
+</style>
+</head>
+<body>
+  <header>📅 Book Your Sound Healing Session</header>
+  <div class="wrap">
+
+    <!-- Progress bar -->
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <!-- Info banner -->
+    <div class="info-banner">
+      <strong>🎪 Market Session Booking</strong><br>
+      Book your session today at the market! You'll receive SMS & email reminders before your session time.
+    </div>
+
+    <!-- STEP 1: Client Details -->
+    <section class="card step active" id="step1">
+      <h2>Step 1: Your Details</h2>
+      <div class="grid">
+        <div>
+          <label>First Name <span class="required">*</span></label>
+          <input type="text" id="firstName" placeholder="First name" required/>
+        </div>
+        <div>
+          <label>Surname <span class="required">*</span></label>
+          <input type="text" id="surname" placeholder="Surname" required/>
+        </div>
+        <div>
+          <label>Mobile Phone <span class="required">*</span></label>
+          <input type="tel" id="phone" placeholder="04XX XXX XXX" required/>
+          <span class="muted">For session reminders via SMS</span>
+        </div>
+        <div>
+          <label>Email <span class="required">*</span></label>
+          <input type="email" id="email" placeholder="your@email.com" required/>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button onclick="nextStep(1)">Continue to Safety Screen →</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: Safety Screen -->
+    <section class="card step" id="step2">
+      <h2>Step 2: Safety Screen</h2>
+      <p class="muted">Please read carefully and confirm you do not have any of the following contraindications:</p>
+
+      <div class="chips" style="margin-top:16px">
+        <label class="chip">
+          <input type="checkbox" value="Pacemakers/Implants" onchange="checkSafety()">
+          Pacemakers/Implants
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Low‑frequency vibration can interact with pacemakers or implanted neuro‑stimulators. Electrical/magnetic coupling may disrupt sensing or pacing.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Deep Vein Thrombosis" onchange="checkSafety()">
+          Deep Vein Thrombosis (DVT)
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Vibration may increase blood flow and tissue movement, risking clot mobilisation and embolism.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Bleeding Disorders" onchange="checkSafety()">
+          Bleeding Disorders
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Circulatory stimulation from vibration can aggravate bleeding, bruising, or haemorrhage risk.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Recent Surgery/Open Wounds" onchange="checkSafety()">
+          Recent Surgery/Open Wounds
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Mechanical vibration may disrupt sutures, delay tissue repair, or increase swelling.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Severe Low Blood Pressure" onchange="checkSafety()">
+          Severe Low Blood Pressure
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">VAT promotes relaxation which can further lower blood pressure, potentially causing dizziness or syncope.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Seizure Disorders" onchange="checkSafety()">
+          Seizure Disorders
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Rhythmic sensory input may, in rare cases, provoke seizures in susceptible individuals.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Acute Inflammatory Conditions" onchange="checkSafety()">
+          Acute Inflammatory Conditions
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">In acute flare‑ups, added circulation and vibration may intensify heat, swelling, and pain.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Psychotic Conditions" onchange="checkSafety()">
+          Psychotic Conditions
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Strong sensory input can increase perceptual confusion or distress in untreated/unstable psychosis.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Pregnancy" onchange="checkSafety()">
+          Pregnancy
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Safety data during pregnancy are limited. Avoid vibration near abdomen/pelvis to prevent potential uterine stimulation.</span>
+          </span>
+        </label>
+
+        <label class="chip">
+          <input type="checkbox" value="Chemotherapy/Active Cancer" onchange="checkSafety()">
+          Chemotherapy/Active Cancer
+          <span class="info" tabindex="0">❕
+            <span class="tooltip">Vibration‑related circulatory changes may interact with medication effects and fatigue.</span>
+          </span>
+        </label>
+      </div>
+
+      <div style="margin-top:24px;padding:16px;background:#f0f9f8;border-radius:12px;border:2px solid var(--accent)">
+        <label class="chip" style="background:#fff;border:2px solid var(--accent);font-weight:700">
+          <input type="checkbox" id="noneApply" value="None" onchange="checkSafety()">
+          ✓ None of the above apply to me
+        </label>
+      </div>
+
+      <div id="safetyError" class="error-banner" style="display:none">
+        <strong>⚠️ Session Not Suitable</strong><br>
+        Based on your responses, vibroacoustic therapy may not be suitable for you at this time. Please consult with your healthcare provider before booking a session.
+      </div>
+
+      <div style="margin-top:20px;display:flex;gap:12px">
+        <button style="background:#e9f6f4;color:#0a6e6a;flex:1" onclick="prevStep(2)">← Back</button>
+        <button id="continueToSlots" disabled style="flex:2" onclick="nextStep(2)">Continue to Select Time →</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: Time Slots -->
+    <section class="card step" id="step3">
+      <h2>Step 3: Select Your Time</h2>
+      <p class="muted">Choose your preferred session time and duration</p>
+
+      <div class="slots" id="slotsContainer">
+        <!-- Slots will be dynamically populated -->
+      </div>
+
+      <div id="noSlotsMessage" style="display:none;text-align:center;padding:40px;color:var(--muted)">
+        <p>No available slots at the moment. Please check back soon!</p>
+      </div>
+
+      <div style="margin-top:20px;display:flex;gap:12px">
+        <button style="background:#e9f6f4;color:#0a6e6a;flex:1" onclick="prevStep(3)">← Back</button>
+      </div>
+    </section>
+
+    <!-- STEP 4: Booking Summary -->
+    <section class="card" id="summarySection" style="display:none">
+      <h2>Booking Summary</h2>
+      <div class="summary">
+        <div class="summary-row">
+          <span>Name:</span>
+          <span id="summaryName">--</span>
+        </div>
+        <div class="summary-row">
+          <span>Session Time:</span>
+          <span id="summaryTime">--</span>
+        </div>
+        <div class="summary-row">
+          <span>Duration:</span>
+          <span id="summaryDuration">--</span>
+        </div>
+        <div class="summary-row">
+          <span>Session Type:</span>
+          <span>Sound Healing</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total Amount:</span>
+          <span id="summaryTotal">$0</span>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button id="proceedToPayment">
+          Proceed to Payment →
+        </button>
+      </div>
+      <p class="muted" style="margin-top:12px;text-align:center;font-size:12px">
+        You'll receive SMS and email reminders 15 minutes before your session
+      </p>
+    </section>
+
+  </div>
+
+<script>
+let currentStep = 1;
+let selectedSlot = null;
+let formData = {
+  firstName: '',
+  surname: '',
+  phone: '',
+  email: '',
+  contraindications: [],
+  safetyScreenPassed: false
+};
+
+// Generate sample slots
+function generateSlots() {
+  const slots = [];
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  let startHour = currentHour;
+  let startMinute = Math.ceil(currentMinute / 15) * 15;
+  if (startMinute >= 60) {
+    startHour++;
+    startMinute = 0;
+  }
+
+  for (let h = startHour; h < 17; h++) {
+    for (let m = (h === startHour ? startMinute : 0); m < 60; m += 15) {
+      if (h >= 17) break;
+      const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      const durations = [
+        { duration: 15, price: 25, available: Math.random() > 0.3 },
+        { duration: 20, price: 35, available: Math.random() > 0.3 },
+        { duration: 30, price: 50, available: Math.random() > 0.3 }
+      ];
+      durations.forEach(d => {
+        slots.push({ time: timeStr, duration: d.duration, price: d.price, available: d.available });
+      });
+    }
+  }
+  return slots;
+}
+
+const slots = generateSlots();
+
+function updateProgress() {
+  const progress = (currentStep / 4) * 100;
+  document.getElementById('progressFill').style.width = `${progress}%`;
+}
+
+function nextStep(step) {
+  // Validate current step
+  if (step === 1) {
+    const firstName = document.getElementById('firstName').value.trim();
+    const surname = document.getElementById('surname').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!firstName || !surname || !phone || !email) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    formData.firstName = firstName;
+    formData.surname = surname;
+    formData.phone = phone;
+    formData.email = email;
+  }
+
+  if (step === 2) {
+    if (!formData.safetyScreenPassed) {
+      alert('Please confirm that none of the contraindications apply to you');
+      return;
+    }
+  }
+
+  // Hide current step
+  document.getElementById(`step${currentStep}`).classList.remove('active');
+  currentStep++;
+
+  // Show next step
+  if (currentStep === 3) {
+    renderSlots();
+  }
+  document.getElementById(`step${currentStep}`).classList.add('active');
+  updateProgress();
+}
+
+function prevStep(step) {
+  document.getElementById(`step${currentStep}`).classList.remove('active');
+  currentStep--;
+  document.getElementById(`step${currentStep}`).classList.add('active');
+  updateProgress();
+}
+
+function checkSafety() {
+  const contraindications = Array.from(document.querySelectorAll('.chip input[type="checkbox"]:not(#noneApply)'))
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+
+  const noneApply = document.getElementById('noneApply').checked;
+  const safetyError = document.getElementById('safetyError');
+  const continueBtn = document.getElementById('continueToSlots');
+
+  // If any contraindication is selected
+  if (contraindications.length > 0) {
+    document.getElementById('noneApply').checked = false;
+    safetyError.style.display = 'block';
+    continueBtn.disabled = true;
+    formData.safetyScreenPassed = false;
+    formData.contraindications = contraindications;
+    return;
+  }
+
+  // If "None apply" is checked
+  if (noneApply) {
+    safetyError.style.display = 'none';
+    continueBtn.disabled = false;
+    formData.safetyScreenPassed = true;
+    formData.contraindications = [];
+  } else {
+    continueBtn.disabled = true;
+    formData.safetyScreenPassed = false;
+  }
+}
+
+function renderSlots() {
+  const container = document.getElementById('slotsContainer');
+  container.innerHTML = slots.map((slot, idx) => `
+    <div class="slot ${slot.available ? '' : 'unavailable'}"
+         data-index="${idx}"
+         onclick="selectSlot(${idx})">
+      <div class="time">${slot.time}</div>
+      <div class="duration">${slot.duration} minutes</div>
+      <div class="price">$${slot.price}</div>
+    </div>
+  `).join('');
+}
+
+function selectSlot(index) {
+  const slot = slots[index];
+  if (!slot.available) return;
+
+  selectedSlot = slot;
+
+  document.querySelectorAll('.slot').forEach((el, idx) => {
+    el.classList.toggle('selected', idx === index);
+  });
+
+  // Show summary
+  document.getElementById('summarySection').style.display = 'block';
+  document.getElementById('summaryName').textContent = `${formData.firstName} ${formData.surname}`;
+  document.getElementById('summaryTime').textContent = slot.time;
+  document.getElementById('summaryDuration').textContent = `${slot.duration} minutes`;
+  document.getElementById('summaryTotal').textContent = `$${slot.price}`;
+
+  document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.getElementById('proceedToPayment').addEventListener('click', () => {
+  const bookingData = {
+    ...formData,
+    slot: selectedSlot,
+    safetyScreenCompleted: true
+  };
+
+  console.log('Booking data:', bookingData);
+  alert(`Booking confirmed!\n\nSession: ${selectedSlot.time} for ${selectedSlot.duration} minutes\nTotal: $${selectedSlot.price}\n\nProceeding to payment...`);
+
+  // In production: Send to payment gateway
+  // window.location.href = '/payment?data=' + encodeURIComponent(JSON.stringify(bookingData));
+});
+
+updateProgress();
+</script>
+</body>
+</html>
