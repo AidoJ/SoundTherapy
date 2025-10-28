@@ -5,16 +5,14 @@ import './BookingsList.css';
 const BookingsList = () => {
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     confirmed: 0,
     cashPending: 0,
     completed: 0
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // Load today's bookings
   useEffect(() => {
     loadBookings();
 
@@ -37,11 +35,9 @@ const BookingsList = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      setError(null);
-
       const today = new Date().toISOString().split('T')[0];
 
-      const { data, error: fetchError } = await supabase
+      const { data, error } = await supabase
         .from('bookings')
         .select(`
           *,
@@ -56,39 +52,90 @@ const BookingsList = () => {
         .lt('selectedslot', `${today}T23:59:59`)
         .order('selectedslot', { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
 
       setBookings(data || []);
-
-      // Calculate stats
-      const total = data?.length || 0;
-      const confirmed = data?.filter(b => b.bookingstatus === 'confirmed').length || 0;
-      const cashPending = data?.filter(b => b.paymentmethod === 'Cash' && !b.cash_received).length || 0;
-      const completed = data?.filter(b => b.bookingstatus === 'completed').length || 0;
-
-      setStats({ total, confirmed, cashPending, completed });
-
+      updateStats(data || []);
     } catch (err) {
       console.error('Error loading bookings:', err);
-      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const markCashReceived = async (bookingId) => {
-    try {
-      const practitionerName = prompt('Enter your name to confirm cash received:');
-      if (!practitionerName) return;
+  const updateStats = (bookingsData) => {
+    const total = bookingsData.length;
+    const confirmed = bookingsData.filter(b =>
+      b.bookingstatus === 'confirmed' &&
+      (b.paymentmethod !== 'Cash' || b.cash_received === true)
+    ).length;
+    const cashPending = bookingsData.filter(b =>
+      b.paymentmethod === 'Cash' && b.cash_received === false
+    ).length;
+    const completed = bookingsData.filter(b => b.bookingstatus === 'completed').length;
 
+    setStats({ total, confirmed, cashPending, completed });
+  };
+
+  const getFilteredBookings = () => {
+    if (filter === 'cash-pending') {
+      return bookings.filter(b => b.paymentmethod === 'Cash' && b.cash_received === false);
+    } else if (filter === 'confirmed') {
+      return bookings.filter(b =>
+        b.bookingstatus === 'confirmed' &&
+        (b.paymentmethod !== 'Cash' || b.cash_received === true)
+      );
+    } else if (filter !== 'all') {
+      return bookings.filter(b => b.bookingstatus === filter);
+    }
+    return bookings;
+  };
+
+  const formatTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    return date.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const formatPrice = (cents) => {
+    return `$${(cents / 100).toFixed(2)}`;
+  };
+
+  const getPaymentBadge = (booking) => {
+    if (booking.paymentmethod === 'Cash') {
+      if (booking.cash_received === true) {
+        return <span className="status-badge cash-received">💵 Cash Received</span>;
+      } else {
+        return <span className="status-badge cash-pending">💵 Cash Due</span>;
+      }
+    } else {
+      return <span className="status-badge paid">💳 Paid Online</span>;
+    }
+  };
+
+  const formatStatus = (status) => {
+    const statusMap = {
+      'pending': '⏳ Pending',
+      'confirmed': '✓ Confirmed',
+      'in-progress': '▶️ In Progress',
+      'completed': '✅ Completed'
+    };
+    return statusMap[status] || status;
+  };
+
+  const markCashReceived = async (bookingId, firstName, surname, price) => {
+    if (!window.confirm(`Mark cash payment of ${formatPrice(price)} as received from ${firstName} ${surname}?`)) {
+      return;
+    }
+
+    try {
       const { error } = await supabase.rpc('mark_cash_received', {
         p_booking_id: bookingId,
-        p_received_by: practitionerName
+        p_received_by: 'Practitioner'
       });
 
       if (error) throw error;
 
-      alert('✅ Cash payment marked as received');
+      alert(`✓ Cash payment received from ${firstName} ${surname}\n\nBooking is now confirmed and ready to start.`);
       loadBookings();
     } catch (err) {
       console.error('Error marking cash received:', err);
@@ -101,7 +148,11 @@ const BookingsList = () => {
     window.location.href = `/intake?bookingId=${bookingId}`;
   };
 
-  const completeSession = async (bookingId) => {
+  const completeSession = async (bookingId, firstName, surname) => {
+    if (!window.confirm(`Complete session for ${firstName} ${surname}?`)) {
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('bookings')
@@ -113,7 +164,7 @@ const BookingsList = () => {
 
       if (error) throw error;
 
-      alert('✅ Session marked as completed');
+      alert(`✅ Session completed for ${firstName} ${surname}`);
       loadBookings();
     } catch (err) {
       console.error('Error completing session:', err);
@@ -121,102 +172,38 @@ const BookingsList = () => {
     }
   };
 
-  const cancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          bookingstatus: 'cancelled',
-          cancelledat: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
-      alert('✅ Booking cancelled');
-      loadBookings();
-    } catch (err) {
-      console.error('Error cancelling booking:', err);
-      alert('❌ Error: ' + err.message);
-    }
-  };
-
-  const getFilteredBookings = () => {
-    switch (filter) {
-      case 'ready':
-        return bookings.filter(b => b.bookingstatus === 'confirmed' && b.cash_received !== false);
-      case 'cash-due':
-        return bookings.filter(b => b.paymentmethod === 'Cash' && !b.cash_received);
-      case 'in-progress':
-        return bookings.filter(b => b.bookingstatus === 'in-progress');
-      case 'completed':
-        return bookings.filter(b => b.bookingstatus === 'completed');
-      default:
-        return bookings;
-    }
-  };
-
-  const formatTime = (dateTimeString) => {
-    const date = new Date(dateTimeString);
-    return date.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
-  };
-
-  const formatPrice = (cents) => {
-    return `$${(cents / 100).toFixed(2)}`;
-  };
-
-  const getPaymentBadge = (booking) => {
-    if (booking.paymentmethod === 'Stripe') {
-      return <span className="badge badge-success">💳 Paid Online</span>;
-    } else if (booking.cash_received) {
-      return <span className="badge badge-success">💵 Cash Received</span>;
-    } else {
-      return <span className="badge badge-warning">💵 Cash Payment Due</span>;
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      'confirmed': <span className="badge badge-info">✓ Confirmed</span>,
-      'in-progress': <span className="badge badge-primary">▶️ In Progress</span>,
-      'completed': <span className="badge badge-success">✓ Completed</span>,
-      'cancelled': <span className="badge badge-danger">✗ Cancelled</span>
-    };
-    return badges[status] || <span className="badge">{status}</span>;
-  };
-
   const getActionButtons = (booking) => {
     // Cash payment pending
-    if (booking.paymentmethod === 'Cash' && !booking.cash_received) {
+    if (booking.paymentmethod === 'Cash' && booking.cash_received === false) {
       return (
-        <button
-          className="btn-action btn-warning"
-          onClick={() => markCashReceived(booking.id)}
-        >
-          💵 Mark Cash Received
-        </button>
+        <>
+          <button
+            className="btn btn-warning"
+            onClick={() => markCashReceived(booking.id, booking.firstname, booking.surname, booking.price_paid_cents)}
+          >
+            💵 Mark Cash Received
+          </button>
+          <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+            View Details
+          </button>
+        </>
       );
     }
 
     // Ready to start session
     if (booking.bookingstatus === 'confirmed') {
       return (
-        <div className="button-group">
+        <>
           <button
-            className="btn-action btn-primary"
+            className="btn btn-primary"
             onClick={() => startSession(booking.id)}
           >
             ▶️ Start Session
           </button>
-          <button
-            className="btn-action btn-danger-outline"
-            onClick={() => cancelBooking(booking.id)}
-          >
-            ✗ Cancel
+          <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+            View Details
           </button>
-        </div>
+        </>
       );
     }
 
@@ -224,173 +211,160 @@ const BookingsList = () => {
     if (booking.bookingstatus === 'in-progress') {
       return (
         <button
-          className="btn-action btn-success"
-          onClick={() => completeSession(booking.id)}
+          className="btn btn-success"
+          onClick={() => completeSession(booking.id, booking.firstname, booking.surname)}
         >
           ✓ Complete Session
         </button>
       );
     }
 
-    // Completed
+    // Session completed
     if (booking.bookingstatus === 'completed') {
       return (
-        <span className="text-muted">Session completed</span>
+        <button className="btn btn-secondary" onClick={() => viewDetails(booking)}>
+          View Session
+        </button>
       );
     }
 
     return null;
   };
 
-  if (loading) {
-    return (
-      <div className="bookings-container">
-        <div className="loading">Loading today's bookings...</div>
-      </div>
-    );
-  }
+  const viewDetails = (booking) => {
+    const paymentInfo = booking.paymentmethod === 'Cash'
+      ? `Cash ${booking.cash_received ? '(Received)' : '(Pending)'}`
+      : 'Stripe (Paid)';
 
-  if (error) {
-    return (
-      <div className="bookings-container">
-        <div className="error-banner">❌ Error loading bookings: {error}</div>
-      </div>
-    );
-  }
+    alert(`Booking Details:\n\nName: ${booking.firstname} ${booking.surname}\nService: ${booking.services?.service_name}\nTime: ${formatTime(booking.selectedslot)}\nDuration: ${booking.services?.duration_minutes} minutes\nPrice: ${formatPrice(booking.price_paid_cents)}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nPayment: ${paymentInfo}\nStatus: ${booking.bookingstatus}`);
+  };
+
+  const filterBookings = (newFilter) => {
+    setFilter(newFilter);
+  };
+
+  const refreshBookings = () => {
+    loadBookings();
+  };
+
+  const currentDate = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
 
   const filteredBookings = getFilteredBookings();
 
   return (
     <div className="bookings-container">
-      <div className="bookings-header">
-        <h1>📅 Today's Bookings</h1>
-        <button className="btn-refresh" onClick={loadBookings}>
-          🔄 Refresh
-        </button>
-      </div>
+      <header className="bookings-header">
+        <div>
+          <div className="header-title">📋 Today's Bookings</div>
+          <div className="header-date">{currentDate}</div>
+        </div>
+        <div>
+          <button className="btn btn-secondary" onClick={refreshBookings}>🔄 Refresh</button>
+        </div>
+      </header>
 
-      {/* Stats Dashboard */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-value">{stats.total}</div>
-          <div className="stat-label">Total Bookings</div>
+      <div className="bookings-wrap">
+        {/* Stats */}
+        <div className="stats">
+          <div className="stat-card">
+            <div className="stat-label">Total Bookings</div>
+            <div className="stat-value">{stats.total}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Confirmed</div>
+            <div className="stat-value">{stats.confirmed}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Cash Pending</div>
+            <div className="stat-value">{stats.cashPending}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Completed</div>
+            <div className="stat-value">{stats.completed}</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">✓</div>
-          <div className="stat-value">{stats.confirmed}</div>
-          <div className="stat-label">Confirmed</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">💵</div>
-          <div className="stat-value">{stats.cashPending}</div>
-          <div className="stat-label">Cash Payment Due</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">✅</div>
-          <div className="stat-value">{stats.completed}</div>
-          <div className="stat-label">Completed</div>
-        </div>
-      </div>
 
-      {/* Filter Buttons */}
-      <div className="filter-buttons">
-        <button
-          className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-          onClick={() => setFilter('all')}
-        >
-          All ({bookings.length})
-        </button>
-        <button
-          className={`filter-btn ${filter === 'ready' ? 'active' : ''}`}
-          onClick={() => setFilter('ready')}
-        >
-          Ready to Start
-        </button>
-        <button
-          className={`filter-btn ${filter === 'cash-due' ? 'active' : ''}`}
-          onClick={() => setFilter('cash-due')}
-        >
-          Cash Payment Due ({stats.cashPending})
-        </button>
-        <button
-          className={`filter-btn ${filter === 'in-progress' ? 'active' : ''}`}
-          onClick={() => setFilter('in-progress')}
-        >
-          In Progress
-        </button>
-        <button
-          className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
-          onClick={() => setFilter('completed')}
-        >
-          Completed ({stats.completed})
-        </button>
-      </div>
+        {/* Filters */}
+        <div className="filters">
+          <button
+            className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => filterBookings('all')}
+          >
+            All
+          </button>
+          <button
+            className={`filter-btn ${filter === 'confirmed' ? 'active' : ''}`}
+            onClick={() => filterBookings('confirmed')}
+          >
+            Ready to Start
+          </button>
+          <button
+            className={`filter-btn ${filter === 'cash-pending' ? 'active' : ''}`}
+            onClick={() => filterBookings('cash-pending')}
+          >
+            Cash Payment Due ({stats.cashPending})
+          </button>
+          <button
+            className={`filter-btn ${filter === 'in-progress' ? 'active' : ''}`}
+            onClick={() => filterBookings('in-progress')}
+          >
+            In Progress
+          </button>
+          <button
+            className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
+            onClick={() => filterBookings('completed')}
+          >
+            Completed ({stats.completed})
+          </button>
+        </div>
 
-      {/* Bookings List */}
-      <div className="bookings-list">
-        {filteredBookings.length === 0 ? (
+        {/* Bookings list */}
+        {loading ? (
           <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <h3>No bookings found</h3>
-            <p>There are no bookings matching this filter.</p>
+            <div className="empty-state-icon">⏳</div>
+            <p>Loading bookings...</p>
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
+            <p>No bookings found for this filter.</p>
           </div>
         ) : (
-          filteredBookings.map(booking => (
-            <div key={booking.id} className="booking-card">
-              <div className="booking-time-badge">
-                {formatTime(booking.selectedslot)}
-              </div>
-
-              <div className="booking-content">
-                <div className="booking-header">
-                  <h3>
-                    {booking.services?.icon_emoji || '🎵'} {booking.firstname} {booking.surname}
-                  </h3>
-                  <div className="booking-badges">
-                    {getPaymentBadge(booking)}
-                    {getStatusBadge(booking.bookingstatus)}
-                  </div>
+          <div className="bookings-list">
+            {filteredBookings.map(booking => (
+              <div key={booking.id} className="booking-card">
+                <div className="time-badge">
+                  <div className="time">{formatTime(booking.selectedslot)}</div>
+                  <div className="duration">{booking.services?.duration_minutes} min</div>
                 </div>
 
-                <div className="booking-details">
-                  <div className="detail-row">
-                    <span className="detail-label">📧 Email:</span>
-                    <span className="detail-value">{booking.email}</span>
+                <div className="booking-info">
+                  <div className="booking-name">{booking.firstname} {booking.surname}</div>
+                  <div className="booking-contact">
+                    <span>📱 {booking.phone}</span>
+                    <span>✉️ {booking.email}</span>
+                    <span>🎵 {booking.services?.service_name}</span>
+                    <span>💰 {formatPrice(booking.price_paid_cents)}</span>
                   </div>
-                  <div className="detail-row">
-                    <span className="detail-label">📱 Phone:</span>
-                    <span className="detail-value">{booking.phone}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">🎵 Service:</span>
-                    <span className="detail-value">
-                      {booking.services?.service_name} ({booking.services?.duration_minutes} min)
+                  <div>
+                    {getPaymentBadge(booking)}
+                    <span className={`status-badge ${booking.bookingstatus}`}>
+                      {formatStatus(booking.bookingstatus)}
                     </span>
                   </div>
-                  <div className="detail-row">
-                    <span className="detail-label">💰 Price:</span>
-                    <span className="detail-value">
-                      {formatPrice(booking.services?.price_cents || booking.price_paid_cents)}
-                    </span>
-                  </div>
-
-                  {booking.cash_received && (
-                    <div className="detail-row">
-                      <span className="detail-label">✓ Cash received by:</span>
-                      <span className="detail-value">
-                        {booking.cash_received_by} at {formatTime(booking.cash_received_at)}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="booking-actions">
                   {getActionButtons(booking)}
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>
