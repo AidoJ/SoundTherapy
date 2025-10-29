@@ -65,33 +65,46 @@ const BookingForm = ({ onBookingComplete }) => {
         }
       }
 
-      // Get existing bookings for this date
+      // Get existing bookings for this date with duration
       const { data: existingBookings, error } = await supabase
         .from('bookings')
-        .select('selectedslot')
+        .select('selectedslot, duration')
         .gte('selectedslot', `${selectedDate}T00:00:00`)
         .lt('selectedslot', `${selectedDate}T23:59:59`);
 
       if (error) throw error;
 
-      // Extract booked times - parse directly from string to avoid timezone issues
-      const bookedTimes = existingBookings?.map(booking => {
-        // Database stores: "2025-10-28T13:00:00" - extract time as "13:00"
-        if (booking.selectedslot && booking.selectedslot.includes('T')) {
-          const timePart = booking.selectedslot.split('T')[1];
-          if (timePart) {
-            const [hours, minutes] = timePart.split(':');
-            return `${hours}:${minutes}`;
-          }
-        }
-        // Fallback
-        return new Date(booking.selectedslot).toTimeString().slice(0, 5);
-      }) || [];
+      // Calculate blocked time slots based on booking duration + 5 min buffer
+      const blockedSlots = new Set();
 
-      // Filter out booked slots
+      existingBookings?.forEach(booking => {
+        if (!booking.selectedslot) return;
+
+        // Parse start time
+        const timePart = booking.selectedslot.split('T')[1];
+        if (!timePart) return;
+
+        const [startHours, startMinutes] = timePart.split(':').map(Number);
+        const startTimeInMinutes = startHours * 60 + startMinutes;
+
+        // Calculate end time with 5-minute buffer
+        const durationMinutes = booking.duration || 30; // Default to 30 if not set
+        const bufferMinutes = 5;
+        const endTimeInMinutes = startTimeInMinutes + durationMinutes + bufferMinutes;
+
+        // Block all 15-minute slots that fall within this booking's time range
+        for (let t = startTimeInMinutes; t < endTimeInMinutes; t += 15) {
+          const h = Math.floor(t / 60);
+          const m = t % 60;
+          const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          blockedSlots.add(timeStr);
+        }
+      });
+
+      // Filter out blocked slots
       const availableSlots = allSlots.map(time => ({
         time,
-        available: !bookedTimes.includes(time)
+        available: !blockedSlots.has(time)
       }));
 
       setTimeSlots(availableSlots);
