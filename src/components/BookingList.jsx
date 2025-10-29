@@ -6,6 +6,7 @@ const BookingList = () => {
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [stats, setStats] = useState({
     total: 0,
     confirmed: 0,
@@ -30,12 +31,11 @@ const BookingList = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [selectedDate]);
 
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('bookings')
@@ -48,8 +48,8 @@ const BookingList = () => {
             icon_emoji
           )
         `)
-        .gte('selectedslot', `${today}T00:00:00`)
-        .lt('selectedslot', `${today}T23:59:59`)
+        .gte('selectedslot', `${selectedDate}T00:00:00`)
+        .lt('selectedslot', `${selectedDate}T23:59:59`)
         .order('selectedslot', { ascending: true });
 
       if (error) throw error;
@@ -247,12 +247,14 @@ const BookingList = () => {
     loadBookings();
   };
 
-  const currentDate = new Date().toLocaleDateString('en-AU', {
+  const currentDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-AU', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
+
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
   const filteredBookings = getFilteredBookings();
 
@@ -260,10 +262,25 @@ const BookingList = () => {
     <div className="bookings-container">
       <header className="bookings-header">
         <div>
-          <div className="header-title">📋 Today's Bookings</div>
+          <div className="header-title">📋 {isToday ? "Today's Bookings" : "Bookings"}</div>
           <div className="header-date">{currentDate}</div>
         </div>
-        <div>
+        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '2px solid #fff',
+              background: 'rgba(255, 255, 255, 0.2)',
+              color: '#fff',
+              fontWeight: '600',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          />
           <button className="btn btn-secondary" onClick={refreshBookings}>🔄 Refresh</button>
         </div>
       </header>
