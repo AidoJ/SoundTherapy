@@ -1,15 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { supabase } from '../services/supabaseClient';
 import { getAudioFileForFrequency } from '../services/audioMatcher';
 import './AudioPlayer.css';
 
-const AudioPlayer = ({ frequency }) => {
+const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
   const audioRef = useRef(null);
+  const endAudioRef = useRef(null);
+  const timerIntervalRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(70);
   const [audioFile, setAudioFile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [endAudioFile, setEndAudioFile] = useState(null);
 
   // Fetch audio file from database based on frequency
   useEffect(() => {
@@ -29,6 +35,93 @@ const AudioPlayer = ({ frequency }) => {
 
     loadAudioFile();
   }, [frequency]);
+
+  // Fetch SessionEnd.mp3 from audio_files table
+  useEffect(() => {
+    const loadEndAudio = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audio_files')
+          .select('file_url')
+          .ilike('file_name', '%SessionEnd%')
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error('Error loading SessionEnd.mp3:', error);
+        } else if (data) {
+          setEndAudioFile(data.file_url);
+        }
+      } catch (err) {
+        console.error('Error fetching end audio:', err);
+      }
+    };
+
+    loadEndAudio();
+  }, []);
+
+  // Initialize session timer
+  useEffect(() => {
+    if (sessionDuration && sessionDuration > 0) {
+      // Convert minutes to seconds
+      setSessionTimeRemaining(sessionDuration * 60);
+    }
+  }, [sessionDuration]);
+
+  // Session countdown timer
+  useEffect(() => {
+    if (sessionTimeRemaining === null || sessionTimeRemaining <= 0) {
+      return;
+    }
+
+    timerIntervalRef.current = setInterval(() => {
+      setSessionTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Timer expired - stop current audio and play end audio
+          handleSessionEnd();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [sessionTimeRemaining]);
+
+  const handleSessionEnd = () => {
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+
+    // Play SessionEnd.mp3 on loop
+    if (endAudioRef.current && endAudioFile) {
+      endAudioRef.current.loop = true;
+      endAudioRef.current.volume = volume / 100;
+      endAudioRef.current.play().catch(err => {
+        console.error('Failed to play end audio:', err);
+      });
+    }
+
+    setSessionEnded(true);
+
+    // Notify parent component
+    if (onSessionEnd) {
+      onSessionEnd();
+    }
+
+    // Clear the interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -87,6 +180,13 @@ const AudioPlayer = ({ frequency }) => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const formatSessionTime = (seconds) => {
+    if (seconds === null || isNaN(seconds)) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   if (loading) {
@@ -108,7 +208,41 @@ const AudioPlayer = ({ frequency }) => {
 
   return (
     <div className="audio-player">
-      <h3>🎵 Healing Session Audio</h3>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+        <h3 style={{margin: 0}}>
+          {sessionEnded ? '⏰ Session Complete!' : '🎵 Healing Session Audio'}
+        </h3>
+        {sessionTimeRemaining !== null && (
+          <div style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: sessionTimeRemaining <= 120 ? '#e11d48' : '#008e8c',
+            padding: '8px 16px',
+            background: sessionTimeRemaining <= 120 ? '#ffe5e5' : '#e7f7f4',
+            borderRadius: '8px'
+          }}>
+            ⏱ {formatSessionTime(sessionTimeRemaining)}
+          </div>
+        )}
+      </div>
+
+      {sessionEnded && (
+        <div style={{
+          background: '#fef3c7',
+          border: '2px solid #f59e0b',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          textAlign: 'center'
+        }}>
+          <p style={{margin: 0, fontWeight: '600', color: '#92400e'}}>
+            🎵 Session time complete! SessionEnd.mp3 is now playing.
+          </p>
+          <p style={{margin: '8px 0 0 0', fontSize: '14px', color: '#78350f'}}>
+            Please complete the Therapist Signature section below.
+          </p>
+        </div>
+      )}
 
       <div className="waveform" onClick={handleSeek}>
         <div className="waveform-progress" style={{ width: `${progress}%` }}></div>
@@ -146,6 +280,13 @@ const AudioPlayer = ({ frequency }) => {
         <source src={audioFile} type="audio/mpeg" />
         <source src={audioFile.replace('.mp3', '.wav')} type="audio/wav" />
       </audio>
+
+      {/* SessionEnd.mp3 audio element */}
+      {endAudioFile && (
+        <audio ref={endAudioRef} src={endAudioFile} preload="metadata">
+          <source src={endAudioFile} type="audio/mpeg" />
+        </audio>
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [bookingError, setBookingError] = useState(null);
   const [currentBookingId, setCurrentBookingId] = useState(null);
+  const [bookingDuration, setBookingDuration] = useState(null);
   const [formData, setFormData] = useState({
     // Client Details
     fullName: '',
@@ -62,16 +63,23 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           setBookingError(null);
           setCurrentBookingId(bookingId);
 
-          // Fetch booking data
+          // Fetch booking data with service duration
           const { data: booking, error: fetchError } = await supabase
             .from('bookings')
-            .select('*')
+            .select(`
+              *,
+              services (
+                duration_minutes
+              )
+            `)
             .eq('id', bookingId)
             .single();
 
           if (fetchError) throw fetchError;
 
           if (booking) {
+            // Store booking duration
+            setBookingDuration(booking.services?.duration_minutes || null);
             // Parse contraindications from JSON string
             let contraindications = [];
             try {
@@ -319,7 +327,13 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
       }
     }
 
-    onSubmit(formData);
+    // Include booking duration in submitted data
+    const submittedData = {
+      ...formData,
+      sessionDuration: bookingDuration
+    };
+
+    onSubmit(submittedData);
   };
 
   return (
