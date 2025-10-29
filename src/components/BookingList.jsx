@@ -92,6 +92,16 @@ const BookingList = () => {
   };
 
   const formatTime = (dateTimeString) => {
+    // Parse time directly from the string to avoid timezone issues
+    // Database stores: "2025-10-28T13:00:00" which should display as "13:00"
+    if (dateTimeString && dateTimeString.includes('T')) {
+      const timePart = dateTimeString.split('T')[1];
+      if (timePart) {
+        const [hours, minutes] = timePart.split(':');
+        return `${hours}:${minutes}`;
+      }
+    }
+    // Fallback to Date parsing
     const date = new Date(dateTimeString);
     return date.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false });
   };

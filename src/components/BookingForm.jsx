@@ -74,10 +74,18 @@ const BookingForm = ({ onBookingComplete }) => {
 
       if (error) throw error;
 
-      // Extract booked times
+      // Extract booked times - parse directly from string to avoid timezone issues
       const bookedTimes = existingBookings?.map(booking => {
-        const timeString = new Date(booking.selectedslot).toTimeString().slice(0, 5);
-        return timeString;
+        // Database stores: "2025-10-28T13:00:00" - extract time as "13:00"
+        if (booking.selectedslot && booking.selectedslot.includes('T')) {
+          const timePart = booking.selectedslot.split('T')[1];
+          if (timePart) {
+            const [hours, minutes] = timePart.split(':');
+            return `${hours}:${minutes}`;
+          }
+        }
+        // Fallback
+        return new Date(booking.selectedslot).toTimeString().slice(0, 5);
       }) || [];
 
       // Filter out booked slots
