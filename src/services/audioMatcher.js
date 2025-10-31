@@ -346,3 +346,56 @@ export const getFrequencyMetadata = async (frequency) => {
     family: 'Unknown'
   };
 };
+
+/**
+ * Find the closest Solfeggio frequency from the frequencies table
+ * @param {number} algorithmFrequency - The frequency returned by the algorithm
+ * @returns {object} - Closest Solfeggio frequency with name, description, etc.
+ */
+export const getClosestSolfeggioFrequency = async (algorithmFrequency) => {
+  try {
+    console.log('🔍 Finding closest Solfeggio frequency for:', algorithmFrequency);
+
+    // Fetch all Solfeggio frequencies from the frequencies table
+    const { data: frequencies, error } = await supabase
+      .from('frequencies')
+      .select('*')
+      .order('hz', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching Solfeggio frequencies:', error);
+      return null;
+    }
+
+    if (!frequencies || frequencies.length === 0) {
+      console.log('No Solfeggio frequencies found in database');
+      return null;
+    }
+
+    // Find the closest frequency
+    let closestFreq = frequencies[0];
+    let minDifference = Math.abs(frequencies[0].hz - algorithmFrequency);
+
+    frequencies.forEach(freq => {
+      const difference = Math.abs(freq.hz - algorithmFrequency);
+      if (difference < minDifference) {
+        minDifference = difference;
+        closestFreq = freq;
+      }
+    });
+
+    console.log('✅ Closest Solfeggio:', closestFreq.hz, 'Hz -', closestFreq.name);
+
+    return {
+      hz: closestFreq.hz,
+      name: closestFreq.name || 'Unknown',
+      description: closestFreq.description || '',
+      benefits: closestFreq.benefits || [],
+      chakra: closestFreq.chakra || '',
+      note: closestFreq.note || ''
+    };
+  } catch (err) {
+    console.error('Error in getClosestSolfeggioFrequency:', err);
+    return null;
+  }
+};

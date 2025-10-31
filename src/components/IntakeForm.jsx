@@ -143,7 +143,6 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
       formData.email,
       formData.phone,
       formData.primaryGoals.length > 0,
-      formData.healthConcerns.length > 0,
       formData.consentGiven,
       formData.therapistSignature
     ];
@@ -281,22 +280,8 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
       return;
     }
 
-    // Health concerns validation - now required
-    if (formData.healthConcerns.length === 0) {
-      alert('Please complete the Safety Screen section');
-      return;
-    }
-
-    // Contraindication check
-    const hasContraindications = formData.healthConcerns.some(concern => concern !== 'none');
-    if (hasContraindications) {
-      const confirmed = window.confirm(
-        'Unfortunately you have checked an existing condition that has a contra-indication, we can not proceed with this treatment unless you have a consent form from your GP or attending Physician. Understood?'
-      );
-      if (!confirmed) {
-        return;
-      }
-    }
+    // Safety Screen is now display-only (contraindications recorded at booking)
+    // No validation needed here
 
     if (!formData.consentGiven) {
       alert('Please provide consent to continue');
@@ -663,9 +648,15 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           </div>
         </section>
 
-        {/* Safety Screen */}
-        <section className="form-card">
-          <h3>4. Safety Screen <span style={{color: 'red'}}>*</span></h3>
+        {/* Safety Screen - Display Only (Disabled) */}
+        <section className="form-card" style={{opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
+          <div style={{position: 'absolute', top: '10px', right: '10px', background: '#e0e0e0', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#666'}}>
+            Information Only
+          </div>
+          <h3>4. Safety Screen</h3>
+          <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
+            This section is for reference. Contraindications are recorded at time of booking.
+          </p>
           <div className="chips">
             {[
               { value: 'pacemaker', label: 'Pacemakers/Implants' },
@@ -684,7 +675,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 <input
                   type="checkbox"
                   checked={formData.healthConcerns.includes(concern.value)}
-                  onChange={() => handleCheckboxGroup('healthConcerns', concern.value)}
+                  disabled
                 />
                 <strong>{concern.label}</strong>
                 {concern.value !== 'none' && (
