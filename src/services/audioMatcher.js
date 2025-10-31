@@ -360,7 +360,7 @@ export const getClosestSolfeggioFrequency = async (algorithmFrequency) => {
     const { data: frequencies, error } = await supabase
       .from('frequencies')
       .select('*')
-      .order('hz', { ascending: true });
+      .order('frequency_hz', { ascending: true });
 
     if (error) {
       console.error('Error fetching Solfeggio frequencies:', error);
@@ -374,21 +374,21 @@ export const getClosestSolfeggioFrequency = async (algorithmFrequency) => {
 
     // Find the closest frequency
     let closestFreq = frequencies[0];
-    let minDifference = Math.abs(frequencies[0].hz - algorithmFrequency);
+    let minDifference = Math.abs(frequencies[0].frequency_hz - algorithmFrequency);
 
     frequencies.forEach(freq => {
-      const difference = Math.abs(freq.hz - algorithmFrequency);
+      const difference = Math.abs(freq.frequency_hz - algorithmFrequency);
       if (difference < minDifference) {
         minDifference = difference;
         closestFreq = freq;
       }
     });
 
-    console.log('✅ Closest Solfeggio:', closestFreq.hz, 'Hz -', closestFreq.name);
+    console.log('✅ Closest Solfeggio:', closestFreq.frequency_hz, 'Hz -', closestFreq.frequency_name);
 
     return {
-      hz: closestFreq.hz,
-      name: closestFreq.name || 'Unknown',
+      hz: closestFreq.frequency_hz,
+      name: closestFreq.frequency_name || 'Unknown',
       description: closestFreq.description || '',
       benefits: closestFreq.benefits || [],
       chakra: closestFreq.chakra || '',

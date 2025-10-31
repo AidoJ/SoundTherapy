@@ -142,7 +142,7 @@ export const sendSessionSummaryEmail = async (sessionData, frequencyMetadata, th
 
     const templateParams = {
       // Client information
-      to_name: `${sessionData.firstName || ''} ${sessionData.surname || ''}`.trim() || 'Valued Client',
+      to_name: sessionData.fullName || 'Valued Client',
       to_email: sessionData.email || '',
 
       // Session details
@@ -298,7 +298,7 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
     // Send to client
     const clientTemplateParams = {
       ...baseTemplateParams,
-      client_name: `${sessionData.firstName || ''} ${sessionData.surname || ''}`.trim() || 'Valued Client',
+      client_name: sessionData.fullName || 'Valued Client',
       client_email: sessionData.email || ''
     };
 
