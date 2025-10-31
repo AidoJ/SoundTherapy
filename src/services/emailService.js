@@ -3,6 +3,7 @@
  */
 
 import emailjs from '@emailjs/browser';
+import { getClosestSolfeggioFrequency } from './audioMatcher';
 
 const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
@@ -221,7 +222,7 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
   console.log('🚀 Starting Vibro_Followup email send...');
   console.log('EmailJS Config:', { SERVICE_ID, PUBLIC_KEY: PUBLIC_KEY ? 'SET' : 'NOT SET' });
   console.log('Template ID:', VIBRO_FOLLOWUP_TEMPLATE);
-  
+
   if (!SERVICE_ID || !PUBLIC_KEY) {
     console.warn('EmailJS not configured - skipping Vibro_Followup emails');
     return { success: false, error: 'EmailJS not configured' };
@@ -229,7 +230,7 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
 
   const practitionerEmail = import.meta.env.VITE_PRACTITIONER_EMAIL;
   console.log('Practitioner email:', practitionerEmail);
-  
+
   if (!practitionerEmail) {
     console.warn('Practitioner email not configured');
     return { success: false, error: 'Practitioner email not set' };
@@ -242,18 +243,22 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
       return { success: false, error: 'Invalid frequency metadata' };
     }
 
+    // Get closest Solfeggio frequency
+    console.log('🔍 Finding closest Solfeggio frequency for:', frequencyMetadata.hz);
+    const solfeggioFreq = await getClosestSolfeggioFrequency(frequencyMetadata.hz);
+    console.log('✅ Closest Solfeggio:', solfeggioFreq);
+
     const baseTemplateParams = {
       // Session details
-      session_date: sessionData.date ? new Date(sessionData.date).toLocaleDateString('en-US', {
+      session_date: sessionData.todaysDate ? new Date(sessionData.todaysDate).toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       }) : 'Not specified',
-      session_time: sessionData.time || 'Not specified',
 
-      // Frequency information
-      frequency_hz: `${frequencyMetadata.hz} Hz`,
+      // Frequency information (algorithm result)
+      frequency_hz: frequencyMetadata.hz,
       frequency_name: frequencyMetadata.name || 'Healing Frequency',
       frequency_family: frequencyMetadata.family || 'Universal',
       healing_properties: (Array.isArray(frequencyMetadata.healingProperties) && frequencyMetadata.healingProperties.length > 0)
@@ -263,23 +268,25 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
         ? frequencyMetadata.primaryIntentions.join(', ')
         : 'Wellness',
 
-      // Client's session intentions
-      client_intentions: (Array.isArray(sessionData.intention) && sessionData.intention.length > 0)
-        ? sessionData.intention.join(', ')
+      // Solfeggio frequency (closest sacred frequency)
+      solfeggio_hz: solfeggioFreq ? solfeggioFreq.hz : '',
+      solfeggio_name: solfeggioFreq ? solfeggioFreq.name : '',
+      solfeggio_description: solfeggioFreq ? solfeggioFreq.description : '',
+
+      // Client's session goals (NEW structure from IntakeForm)
+      primary_goals: (Array.isArray(sessionData.primaryGoals) && sessionData.primaryGoals.length > 0)
+        ? sessionData.primaryGoals.join(', ')
         : 'General wellness',
-      goal_description: sessionData.goalDescription || 'Relaxation and balance',
 
-      // Energy levels (pre-session)
-      physical_energy: sessionData.physicalEnergy ? `${sessionData.physicalEnergy}/10` : 'Not rated',
-      emotional_balance: sessionData.emotionalBalance ? `${sessionData.emotionalBalance}/10` : 'Not rated',
-      mental_clarity: sessionData.mentalClarity ? `${sessionData.mentalClarity}/10` : 'Not rated',
-      spiritual_connection: sessionData.spiritualConnection ? `${sessionData.spiritualConnection}/10` : 'Not rated',
+      // Pre-Session Assessment (NEW - replaces energy levels)
+      pain_level: sessionData.painLevel !== undefined ? sessionData.painLevel : 0,
+      stress_anxiety_level: sessionData.stressAnxietyLevel !== undefined ? sessionData.stressAnxietyLevel : 0,
+      sleep_quality: sessionData.sleepQuality !== undefined ? sessionData.sleepQuality : 0,
 
-      // Emotional indicators
-      emotional_indicators: (Array.isArray(sessionData.emotionalIndicators) && sessionData.emotionalIndicators.length > 0)
-        ? sessionData.emotionalIndicators.join(', ')
-        : 'None',
-      intuitive_messages: sessionData.intuitiveMessages || 'None shared',
+      // Pain/Discomfort Areas (NEW)
+      main_pain_areas: (Array.isArray(sessionData.mainPainAreas) && sessionData.mainPainAreas.length > 0)
+        ? sessionData.mainPainAreas.join(', ')
+        : 'None reported',
 
       // Therapist notes
       therapist_notes: therapistNotes || 'Session completed successfully.',
@@ -291,15 +298,15 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
     // Send to client
     const clientTemplateParams = {
       ...baseTemplateParams,
-      to_name: `${sessionData.firstName || ''} ${sessionData.surname || ''}`.trim() || 'Valued Client',
-      to_email: sessionData.email || ''
+      client_name: `${sessionData.firstName || ''} ${sessionData.surname || ''}`.trim() || 'Valued Client',
+      client_email: sessionData.email || ''
     };
 
     // Send to practitioner
     const practitionerTemplateParams = {
       ...baseTemplateParams,
-      to_name: 'Practitioner',
-      to_email: practitionerEmail
+      client_name: 'Practitioner',
+      client_email: practitionerEmail
     };
 
     // Send both emails
