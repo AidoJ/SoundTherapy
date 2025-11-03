@@ -243,6 +243,13 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
       return { success: false, error: 'Invalid frequency metadata' };
     }
 
+    // Debug: Check sessionData structure
+    console.log('📧 Session Data for Email:', {
+      fullName: sessionData.fullName,
+      email: sessionData.email,
+      todaysDate: sessionData.todaysDate
+    });
+
     // Get closest Solfeggio frequency
     console.log('🔍 Finding closest Solfeggio frequency for:', frequencyMetadata.hz);
     const solfeggioFreq = await getClosestSolfeggioFrequency(frequencyMetadata.hz);
@@ -299,14 +306,16 @@ export const sendVibroFollowupEmails = async (sessionData, frequencyMetadata, th
     const clientTemplateParams = {
       ...baseTemplateParams,
       client_name: sessionData.fullName || 'Valued Client',
-      client_email: sessionData.email || ''
+      client_email: sessionData.email || '',
+      to_email: sessionData.email || '' // EmailJS needs this to route the email
     };
 
     // Send to practitioner
     const practitionerTemplateParams = {
       ...baseTemplateParams,
       client_name: 'Practitioner',
-      client_email: practitionerEmail
+      client_email: practitionerEmail,
+      to_email: practitionerEmail // EmailJS needs this to route the email
     };
 
     // Send both emails
