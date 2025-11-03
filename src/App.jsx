@@ -154,6 +154,12 @@ function App() {
             element={<IntakeForm onSubmit={handleFormSubmit} bookingData={bookingData} />}
           />
 
+          {/* Walk-In Session (no booking required) */}
+          <Route
+            path="/walk-in"
+            element={<IntakeForm onSubmit={handleFormSubmit} walkInMode={true} />}
+          />
+
           {/* Results Screen */}
           <Route
             path="/results"

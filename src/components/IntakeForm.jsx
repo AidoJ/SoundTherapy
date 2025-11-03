@@ -3,7 +3,7 @@ import { supabase } from '../services/supabaseClient';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
-const IntakeForm = ({ onSubmit, bookingData }) => {
+const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [bookingError, setBookingError] = useState(null);
   const [currentBookingId, setCurrentBookingId] = useState(null);
@@ -31,6 +31,9 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     // Safety Screen
     healthConcerns: [],
 
+    // Session Duration (for walk-in mode)
+    sessionDuration: null,
+
     // Consent
     consentGiven: false,
     therapistSignature: '',
@@ -53,6 +56,12 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
   // Load booking data from URL parameter
   useEffect(() => {
     const loadBookingFromUrl = async () => {
+      // Skip booking lookup for walk-in sessions
+      if (walkInMode) {
+        console.log('Walk-in mode: Skipping booking lookup');
+        return;
+      }
+
       // Check for bookingId in URL query parameter
       const urlParams = new URLSearchParams(window.location.search);
       const bookingId = urlParams.get('bookingId');
@@ -312,10 +321,11 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
       }
     }
 
-    // Include booking duration in submitted data
+    // Include session duration in submitted data
+    // Use formData.sessionDuration (from walk-in selector) if set, otherwise use bookingDuration (from database)
     const submittedData = {
       ...formData,
-      sessionDuration: bookingDuration
+      sessionDuration: formData.sessionDuration || bookingDuration
     };
 
     onSubmit(submittedData);
@@ -425,6 +435,47 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
             </div>
           </div>
         </section>
+
+        {/* Session Duration (Walk-In Mode Only) */}
+        {walkInMode && (
+          <section className="form-card">
+            <h3>⏱ Session Duration</h3>
+            <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
+              Set the duration for this walk-in session, or leave blank for manual control.
+            </p>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px'}}>
+              {[
+                { value: null, label: 'Manual Control' },
+                { value: 15, label: '15 minutes' },
+                { value: 20, label: '20 minutes' },
+                { value: 30, label: '30 minutes' },
+                { value: 45, label: '45 minutes' },
+                { value: 60, label: '60 minutes' }
+              ].map(option => (
+                <label
+                  key={option.value || 'manual'}
+                  className="chip"
+                  style={{
+                    cursor: 'pointer',
+                    backgroundColor: formData.sessionDuration === option.value ? '#007e8c' : '#f0f0f0',
+                    color: formData.sessionDuration === option.value ? '#fff' : '#333',
+                    border: formData.sessionDuration === option.value ? '2px solid #007e8c' : '2px solid #e0e0e0'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="sessionDuration"
+                    value={option.value || ''}
+                    checked={formData.sessionDuration === option.value}
+                    onChange={() => setFormData({...formData, sessionDuration: option.value})}
+                    style={{display: 'none'}}
+                  />
+                  <strong>{option.label}</strong>
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Primary Goals */}
         <section className="form-card">
@@ -648,14 +699,19 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           </div>
         </section>
 
-        {/* Safety Screen - Display Only (Disabled) */}
-        <section className="form-card" style={{opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
-          <div style={{position: 'absolute', top: '10px', right: '10px', background: '#e0e0e0', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#666'}}>
-            Information Only
-          </div>
+        {/* Safety Screen */}
+        <section className="form-card" style={walkInMode ? {position: 'relative'} : {opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
+          {!walkInMode && (
+            <div style={{position: 'absolute', top: '10px', right: '10px', background: '#e0e0e0', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#666'}}>
+              Information Only
+            </div>
+          )}
           <h3>4. Safety Screen</h3>
           <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
-            This section is for reference. Contraindications are recorded at time of booking.
+            {walkInMode
+              ? 'Please select any contraindications that apply to this client.'
+              : 'This section is for reference. Contraindications are recorded at time of booking.'
+            }
           </p>
           <div className="chips">
             {[
@@ -675,7 +731,15 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 <input
                   type="checkbox"
                   checked={formData.healthConcerns.includes(concern.value)}
-                  disabled
+                  disabled={!walkInMode}
+                  onChange={(e) => {
+                    if (walkInMode) {
+                      const newConcerns = e.target.checked
+                        ? [...formData.healthConcerns, concern.value]
+                        : formData.healthConcerns.filter(c => c !== concern.value);
+                      setFormData({...formData, healthConcerns: newConcerns});
+                    }
+                  }}
                 />
                 <strong>{concern.label}</strong>
                 {concern.value !== 'none' && (
