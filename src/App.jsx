@@ -76,7 +76,7 @@ function App() {
 
       // 3. Save session data
       if (clientId) {
-        const sessionData = {
+        const sessionDataForDb = {
           client_id: clientId,
           session_date: formData.todaysDate,
           session_time: new Date().toLocaleTimeString(),
@@ -85,7 +85,7 @@ function App() {
           physical_energy: formData.painLevel,
           emotional_balance: formData.stressAnxietyLevel,
           mental_clarity: formData.sleepQuality,
-          spiritual_connection: 0,
+          spiritual_connection: 5, // Default to 5 (midpoint) - field not collected in new form
           selected_frequencies: [],
           health_concerns: formData.healthConcerns,
           medications: '',
@@ -99,7 +99,7 @@ function App() {
           status: 'scheduled'
         };
 
-        const sessionResult = await saveSession(sessionData);
+        const sessionResult = await saveSession(sessionDataForDb);
 
         if (sessionResult.success) {
           console.log('Session saved successfully:', sessionResult.data);
