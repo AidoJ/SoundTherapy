@@ -36,6 +36,8 @@ const BookingForm = ({ onBookingComplete }) => {
   // Load services from database (filtered by service type if selected)
   const loadServices = async (serviceType = null) => {
     try {
+      console.log('🔍 Loading services with type filter:', serviceType);
+
       let query = supabase
         .from('services')
         .select('*')
@@ -49,9 +51,13 @@ const BookingForm = ({ onBookingComplete }) => {
       const { data, error} = await query.order('display_order');
 
       if (error) throw error;
+
+      console.log('✅ Services loaded:', data?.length || 0, 'results');
+      console.log('📋 Services data:', data);
+
       setServices(data || []);
     } catch (err) {
-      console.error('Error loading services:', err);
+      console.error('❌ Error loading services:', err);
     }
   };
 
@@ -77,14 +83,24 @@ const BookingForm = ({ onBookingComplete }) => {
         }
       }
 
-      // Get existing bookings for this date with duration
+      // Get existing bookings for this date with duration, filtered by service type
+      // Only block slots for the same service type (PEMF and Vibro Acoustic can run simultaneously)
       const { data: existingBookings, error } = await supabase
         .from('bookings')
-        .select('selectedslot, duration')
+        .select(`
+          selectedslot,
+          duration,
+          services!inner (
+            service_type
+          )
+        `)
         .gte('selectedslot', `${selectedDate}T00:00:00`)
-        .lt('selectedslot', `${selectedDate}T23:59:59`);
+        .lt('selectedslot', `${selectedDate}T23:59:59`)
+        .eq('services.service_type', formData.selectedServiceType);
 
       if (error) throw error;
+
+      console.log(`🗓️ Found ${existingBookings?.length || 0} existing ${formData.selectedServiceType} bookings for ${selectedDate}`);
 
       // Calculate blocked time slots based on booking duration + 5 min buffer
       const blockedSlots = new Set();
