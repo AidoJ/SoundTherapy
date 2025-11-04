@@ -9,6 +9,7 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
   const [sessions, setSessions] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [audioFiles, setAudioFiles] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -42,11 +43,23 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
     benefits: ''
   });
 
+  const [serviceForm, setServiceForm] = useState({
+    service_name: '',
+    service_type: 'Vibro Acoustic Therapy',
+    description: '',
+    duration_minutes: '',
+    price_cents: '',
+    icon_emoji: '🎵',
+    is_active: true,
+    display_order: 0
+  });
+
   useEffect(() => {
     if (activeTab === 'clients') fetchClients();
     if (activeTab === 'sessions') fetchSessions();
     if (activeTab === 'frequencies') fetchFrequencies();
     if (activeTab === 'audio') fetchAudioFiles();
+    if (activeTab === 'services') fetchServices();
   }, [activeTab]);
 
   const fetchClients = async () => {
@@ -108,6 +121,22 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
       console.error('Error fetching audio files:', error);
     } else {
       setAudioFiles(data || []);
+    }
+    setLoading(false);
+  };
+
+  const fetchServices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .order('service_type', { ascending: true })
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching services:', error);
+    } else {
+      setServices(data || []);
     }
     setLoading(false);
   };
@@ -367,6 +396,116 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
     });
   };
 
+  const handleAddService = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('services')
+      .insert([{
+        service_name: serviceForm.service_name,
+        service_type: serviceForm.service_type,
+        description: serviceForm.description,
+        duration_minutes: parseInt(serviceForm.duration_minutes),
+        price_cents: parseInt(serviceForm.price_cents),
+        icon_emoji: serviceForm.icon_emoji,
+        is_active: serviceForm.is_active,
+        display_order: parseInt(serviceForm.display_order)
+      }]);
+
+    if (error) {
+      console.error('Error adding service:', error);
+      alert('Error adding service: ' + error.message);
+    } else {
+      alert('Service added successfully!');
+      setShowAddModal(false);
+      setServiceForm({
+        service_name: '',
+        service_type: 'Vibro Acoustic Therapy',
+        description: '',
+        duration_minutes: '',
+        price_cents: '',
+        icon_emoji: '🎵',
+        is_active: true,
+        display_order: 0
+      });
+      fetchServices();
+    }
+    setLoading(false);
+  };
+
+  const handleUpdateService = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('services')
+      .update({
+        service_name: serviceForm.service_name,
+        service_type: serviceForm.service_type,
+        description: serviceForm.description,
+        duration_minutes: parseInt(serviceForm.duration_minutes),
+        price_cents: parseInt(serviceForm.price_cents),
+        icon_emoji: serviceForm.icon_emoji,
+        is_active: serviceForm.is_active,
+        display_order: parseInt(serviceForm.display_order)
+      })
+      .eq('id', editingItem.id);
+
+    if (error) {
+      console.error('Error updating service:', error);
+      alert('Error updating service: ' + error.message);
+    } else {
+      alert('Service updated successfully!');
+      setEditingItem(null);
+      setServiceForm({
+        service_name: '',
+        service_type: 'Vibro Acoustic Therapy',
+        description: '',
+        duration_minutes: '',
+        price_cents: '',
+        icon_emoji: '🎵',
+        is_active: true,
+        display_order: 0
+      });
+      fetchServices();
+    }
+    setLoading(false);
+  };
+
+  const handleDeleteService = async (id) => {
+    if (!confirm('Are you sure you want to delete this service?')) return;
+
+    setLoading(true);
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting service:', error);
+      alert('Error deleting service: ' + error.message);
+    } else {
+      alert('Service deleted successfully!');
+      fetchServices();
+    }
+    setLoading(false);
+  };
+
+  const editService = (service) => {
+    setEditingItem(service);
+    setServiceForm({
+      service_name: service.service_name,
+      service_type: service.service_type,
+      description: service.description || '',
+      duration_minutes: service.duration_minutes.toString(),
+      price_cents: service.price_cents.toString(),
+      icon_emoji: service.icon_emoji || '🎵',
+      is_active: service.is_active,
+      display_order: service.display_order.toString()
+    });
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
@@ -407,6 +546,12 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
           onClick={() => setActiveTab('audio')}
         >
           Audio Files
+        </button>
+        <button
+          className={activeTab === 'services' ? 'active' : ''}
+          onClick={() => setActiveTab('services')}
+        >
+          Services
         </button>
         <button
           className={activeTab === 'bookings' ? 'active' : ''}
@@ -602,6 +747,56 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                   </ul>
                 </li>
               </ol>
+            </div>
+          </div>
+        )}
+
+        {/* SERVICES TAB */}
+        {activeTab === 'services' && (
+          <div className="tab-content">
+            <div className="tab-header">
+              <h2>Services ({services.length})</h2>
+              <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+                + Add Service
+              </button>
+            </div>
+
+            <div className="data-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Service Name</th>
+                    <th>Type</th>
+                    <th>Duration</th>
+                    <th>Price</th>
+                    <th>Icon</th>
+                    <th>Active</th>
+                    <th>Order</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.map(service => (
+                    <tr key={service.id}>
+                      <td><strong>{service.service_name}</strong></td>
+                      <td>{service.service_type}</td>
+                      <td>{service.duration_minutes} min</td>
+                      <td>${(service.price_cents / 100).toFixed(2)}</td>
+                      <td>{service.icon_emoji}</td>
+                      <td>
+                        <span className={`status-badge ${service.is_active ? 'active' : 'inactive'}`}>
+                          {service.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>{service.display_order}</td>
+                      <td>
+                        <button className="btn-edit" onClick={() => editService(service)}>Edit</button>
+                        <button className="btn-delete" onClick={() => handleDeleteService(service.id)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -912,6 +1107,144 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                 <button type="submit" className="btn-primary" disabled={uploadingFile}>
                   {uploadingFile ? 'Uploading...' : 'Upload & Save'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD SERVICE MODAL */}
+      {showAddModal && activeTab === 'services' && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>Add New Service</h2>
+            <form onSubmit={handleAddService}>
+              <input
+                type="text"
+                placeholder="Service Name"
+                required
+                value={serviceForm.service_name}
+                onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
+              />
+              <select
+                value={serviceForm.service_type}
+                onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
+                required
+              >
+                <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
+                <option value="PEMF Therapy">PEMF Therapy</option>
+              </select>
+              <textarea
+                placeholder="Description"
+                value={serviceForm.description}
+                onChange={e => setServiceForm({...serviceForm, description: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Duration (minutes)"
+                required
+                value={serviceForm.duration_minutes}
+                onChange={e => setServiceForm({...serviceForm, duration_minutes: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Price (in cents, e.g., 5000 = $50.00)"
+                required
+                value={serviceForm.price_cents}
+                onChange={e => setServiceForm({...serviceForm, price_cents: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Icon Emoji (e.g., 🎵)"
+                value={serviceForm.icon_emoji}
+                onChange={e => setServiceForm({...serviceForm, icon_emoji: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Display Order (e.g., 1, 2, 3)"
+                value={serviceForm.display_order}
+                onChange={e => setServiceForm({...serviceForm, display_order: e.target.value})}
+              />
+              <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <input
+                  type="checkbox"
+                  checked={serviceForm.is_active}
+                  onChange={e => setServiceForm({...serviceForm, is_active: e.target.checked})}
+                />
+                Active (show in booking form)
+              </label>
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Add Service</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SERVICE MODAL */}
+      {editingItem && activeTab === 'services' && (
+        <div className="modal-overlay" onClick={() => setEditingItem(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>Edit Service</h2>
+            <form onSubmit={handleUpdateService}>
+              <input
+                type="text"
+                placeholder="Service Name"
+                required
+                value={serviceForm.service_name}
+                onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
+              />
+              <select
+                value={serviceForm.service_type}
+                onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
+                required
+              >
+                <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
+                <option value="PEMF Therapy">PEMF Therapy</option>
+              </select>
+              <textarea
+                placeholder="Description"
+                value={serviceForm.description}
+                onChange={e => setServiceForm({...serviceForm, description: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Duration (minutes)"
+                required
+                value={serviceForm.duration_minutes}
+                onChange={e => setServiceForm({...serviceForm, duration_minutes: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Price (in cents, e.g., 5000 = $50.00)"
+                required
+                value={serviceForm.price_cents}
+                onChange={e => setServiceForm({...serviceForm, price_cents: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="Icon Emoji (e.g., 🎵)"
+                value={serviceForm.icon_emoji}
+                onChange={e => setServiceForm({...serviceForm, icon_emoji: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="Display Order (e.g., 1, 2, 3)"
+                value={serviceForm.display_order}
+                onChange={e => setServiceForm({...serviceForm, display_order: e.target.value})}
+              />
+              <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <input
+                  type="checkbox"
+                  checked={serviceForm.is_active}
+                  onChange={e => setServiceForm({...serviceForm, is_active: e.target.checked})}
+                />
+                Active (show in booking form)
+              </label>
+              <div className="modal-actions">
+                <button type="button" onClick={() => setEditingItem(null)}>Cancel</button>
+                <button type="submit" className="btn-primary">Update Service</button>
               </div>
             </form>
           </div>

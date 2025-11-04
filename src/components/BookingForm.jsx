@@ -17,6 +17,7 @@ const BookingForm = ({ onBookingComplete }) => {
     email: '',
     contraindications: [],
     safetyScreenPassed: false,
+    selectedServiceType: null,
     selectedService: null,
     selectedDate: '',
     selectedTimeSlot: null,
@@ -27,19 +28,25 @@ const BookingForm = ({ onBookingComplete }) => {
     cashReceived: false
   });
 
-  // Update progress bar
+  // Update progress bar (now 7 steps: details, safety, service type, service, datetime, payment, summary)
   const updateProgress = () => {
-    return (currentStep / 6) * 100;
+    return (currentStep / 7) * 100;
   };
 
-  // Load services from database
-  const loadServices = async () => {
+  // Load services from database (filtered by service type if selected)
+  const loadServices = async (serviceType = null) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('services')
         .select('*')
-        .eq('is_active', true)
-        .order('display_order');
+        .eq('is_active', true);
+
+      // Filter by service type if one is selected
+      if (serviceType) {
+        query = query.eq('service_type', serviceType);
+      }
+
+      const { data, error} = await query.order('display_order');
 
       if (error) throw error;
       setServices(data || []);
@@ -158,29 +165,37 @@ const BookingForm = ({ onBookingComplete }) => {
       return;
     }
 
-    if (currentStep === 3 && !formData.selectedService) {
+    if (currentStep === 3 && !formData.selectedServiceType) {
+      alert('Please select a service type');
+      return;
+    }
+
+    if (currentStep === 4 && !formData.selectedService) {
       alert('Please select a service');
       return;
     }
 
-    if (currentStep === 4 && !formData.selectedDate) {
+    if (currentStep === 5 && !formData.selectedDate) {
       alert('Please select a date');
       return;
     }
 
-    if (currentStep === 4 && !formData.selectedTimeSlot) {
+    if (currentStep === 5 && !formData.selectedTimeSlot) {
       alert('Please select a time slot');
       return;
     }
 
-    if (currentStep === 5 && formData.paymentStatus !== 'paid') {
+    if (currentStep === 6 && formData.paymentStatus !== 'paid') {
       alert('Please complete payment before continuing');
       return;
     }
 
     // Load data for next step
-    if (currentStep === 2) loadServices();
-    if (currentStep === 3 && formData.selectedDate) {
+    if (currentStep === 3) {
+      // Load services filtered by selected service type
+      loadServices(formData.selectedServiceType);
+    }
+    if (currentStep === 4 && formData.selectedDate) {
       generateTimeSlots(formData.selectedDate);
     }
 
@@ -410,16 +425,63 @@ const BookingForm = ({ onBookingComplete }) => {
               onClick={nextStep}
               disabled={!formData.safetyScreenPassed}
             >
-              Continue to Select Service →
+              Continue to Select Type →
             </button>
           </div>
         </section>
       )}
 
-      {/* STEP 3: Select Service */}
+      {/* STEP 3: Select Service Type */}
       {currentStep === 3 && (
         <section className="booking-step">
-          <h2>Step 3: Choose Your Session</h2>
+          <h2>Step 3: Choose Service Type</h2>
+          <p className="step-description">Select the type of therapy you're interested in</p>
+
+          <div className="services-grid">
+            <div
+              className={`service-card ${formData.selectedServiceType === 'Vibro Acoustic Therapy' ? 'selected' : ''}`}
+              onClick={() => setFormData({...formData, selectedServiceType: 'Vibro Acoustic Therapy', selectedService: null})}
+            >
+              <div className="service-header">
+                <div>
+                  <span className="service-icon">🎵</span>
+                  <span className="service-name">Vibro Acoustic Therapy</span>
+                </div>
+              </div>
+              <div className="service-desc">Experience deep relaxation through sound vibrations and acoustic frequencies</div>
+            </div>
+
+            <div
+              className={`service-card ${formData.selectedServiceType === 'PEMF Therapy' ? 'selected' : ''}`}
+              onClick={() => setFormData({...formData, selectedServiceType: 'PEMF Therapy', selectedService: null})}
+            >
+              <div className="service-header">
+                <div>
+                  <span className="service-icon">⚡</span>
+                  <span className="service-name">PEMF Therapy</span>
+                </div>
+              </div>
+              <div className="service-desc">Pulsed Electromagnetic Field therapy for cellular health and energy restoration</div>
+            </div>
+          </div>
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={nextStep}
+              disabled={!formData.selectedServiceType}
+            >
+              Continue to Select Session →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 4: Select Service */}
+      {currentStep === 4 && (
+        <section className="booking-step">
+          <h2>Step 4: Choose Your Session</h2>
           <p className="step-description">Select the duration that suits your needs</p>
 
           <div className="services-grid">
@@ -455,10 +517,10 @@ const BookingForm = ({ onBookingComplete }) => {
         </section>
       )}
 
-      {/* STEP 4: Select Date & Time */}
-      {currentStep === 4 && (
+      {/* STEP 5: Select Date & Time */}
+      {currentStep === 5 && (
         <section className="booking-step">
-          <h2>Step 4: Select Date & Time</h2>
+          <h2>Step 5: Select Date & Time</h2>
           <p className="step-description">Choose your preferred date and time</p>
 
           <div className="form-grid">
@@ -513,8 +575,8 @@ const BookingForm = ({ onBookingComplete }) => {
         </section>
       )}
 
-      {/* STEP 5: Payment Method */}
-      {currentStep === 5 && (
+      {/* STEP 6: Payment Method */}
+      {currentStep === 6 && (
         <section className="booking-step">
           <PaymentStep
             service={formData.selectedService}
@@ -530,15 +592,15 @@ const BookingForm = ({ onBookingComplete }) => {
                 cashReceived: paymentData.cashReceived
               });
               // Automatically advance to summary step
-              setCurrentStep(6);
+              setCurrentStep(7);
             }}
             onBack={prevStep}
           />
         </section>
       )}
 
-      {/* STEP 6: Booking Summary */}
-      {currentStep === 6 && (
+      {/* STEP 7: Booking Summary */}
+      {currentStep === 7 && (
         <section className="booking-step">
           <h2>Booking Summary</h2>
 
