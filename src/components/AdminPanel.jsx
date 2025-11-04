@@ -1126,14 +1126,20 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                 value={serviceForm.service_name}
                 onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
               />
+
+              <label style={{display: 'block', marginBottom: '4px', fontWeight: '600'}}>
+                Service Type <span style={{color: 'red'}}>*</span>
+              </label>
               <select
                 value={serviceForm.service_type}
                 onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
                 required
+                style={{marginBottom: '12px'}}
               >
                 <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
                 <option value="PEMF Therapy">PEMF Therapy</option>
               </select>
+
               <textarea
                 placeholder="Description"
                 value={serviceForm.description}
@@ -1195,14 +1201,20 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                 value={serviceForm.service_name}
                 onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
               />
+
+              <label style={{display: 'block', marginBottom: '4px', fontWeight: '600'}}>
+                Service Type <span style={{color: 'red'}}>*</span>
+              </label>
               <select
                 value={serviceForm.service_type}
                 onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
                 required
+                style={{marginBottom: '12px'}}
               >
                 <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
                 <option value="PEMF Therapy">PEMF Therapy</option>
               </select>
+
               <textarea
                 placeholder="Description"
                 value={serviceForm.description}
