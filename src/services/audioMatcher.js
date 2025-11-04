@@ -27,11 +27,17 @@ export const fetchAudioFilesWithMetadata = async () => {
  * to select the most appropriate audio file
  */
 export const matchAudioFile = async (formData) => {
+  console.log('🎯 === AUDIO MATCHER DEBUG START ===');
+  console.log('📝 Form Data Received:', JSON.stringify(formData, null, 2));
+
   // Fetch all audio files from database
   const audioFiles = await fetchAudioFilesWithMetadata();
 
+  console.log('🎵 Audio Files from Database:', audioFiles.length, 'files found');
+  console.log('📋 Audio Files Details:', JSON.stringify(audioFiles, null, 2));
+
   if (!audioFiles || audioFiles.length === 0) {
-    console.error('No audio files found in database');
+    console.error('❌ No audio files found in database');
     return 432; // Default fallback
   }
 
@@ -46,6 +52,8 @@ export const matchAudioFile = async (formData) => {
       frequency: audio.frequency_min // Use min frequency as representative
     };
   });
+
+  console.log('📊 Initial Scores:', JSON.stringify(scores, null, 2));
 
   // 1. PRIMARY SCORING: Primary Goals (Highest weight: 15 points)
   // Uses primaryGoals from new intake form

@@ -289,8 +289,14 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
       return;
     }
 
-    // Safety Screen is now display-only (contraindications recorded at booking)
-    // No validation needed here
+    // Walk-in mode: Check for contraindications
+    if (walkInMode) {
+      const hasContraindications = formData.healthConcerns.some(c => c !== 'none');
+      if (hasContraindications) {
+        alert('⚠️ Session cannot proceed due to contraindications. Please review the safety information.');
+        return;
+      }
+    }
 
     if (!formData.consentGiven) {
       alert('Please provide consent to continue');
@@ -750,6 +756,61 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
               </label>
             ))}
           </div>
+
+          {/* Contraindication Warning */}
+          {walkInMode && formData.healthConcerns.some(c => c !== 'none') && (
+            <div style={{
+              marginTop: '16px',
+              padding: '16px',
+              background: '#fff3cd',
+              border: '2px solid #ffc107',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'start',
+              gap: '12px'
+            }}>
+              <span style={{fontSize: '24px', flexShrink: 0}}>⚠️</span>
+              <div>
+                <strong style={{color: '#856404', display: 'block', marginBottom: '8px'}}>
+                  Session Cannot Proceed
+                </strong>
+                <p style={{color: '#856404', margin: 0, fontSize: '14px', lineHeight: '1.6'}}>
+                  One or more contraindications have been identified. Vibroacoustic therapy is not suitable for clients with these conditions.
+                  <span
+                    style={{
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      marginLeft: '4px',
+                      fontWeight: '600'
+                    }}
+                    onClick={() => {
+                      const concernsText = formData.healthConcerns
+                        .filter(c => c !== 'none')
+                        .map(c => {
+                          const concern = [
+                            { value: 'pacemaker', label: 'Pacemakers/Implants' },
+                            { value: 'dvt', label: 'Deep Vein Thrombosis' },
+                            { value: 'bleeding', label: 'Bleeding Disorders' },
+                            { value: 'surgery', label: 'Recent Surgery/Open Wounds' },
+                            { value: 'hypotension', label: 'Severe Low Blood Pressure' },
+                            { value: 'epilepsy', label: 'Seizure Disorders' },
+                            { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
+                            { value: 'psychotic', label: 'Psychotic Conditions' },
+                            { value: 'pregnancy', label: 'Pregnancy' },
+                            { value: 'chemotherapy', label: 'Chemotherapy / Active Cancer Treatment' }
+                          ].find(item => item.value === c);
+                          return concern?.label || c;
+                        })
+                        .join('\n• ');
+                      alert(`Contraindications Identified:\n\n• ${concernsText}\n\nPlease click the "?" icon next to each condition for more information about why these are contraindications.`);
+                    }}
+                  >
+                    Click here for more info
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Consent & Acknowledgement */}
@@ -830,7 +891,15 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
         </section>
 
         <div className="form-navigation">
-          <button type="submit" className="btn btn-primary">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={walkInMode && formData.healthConcerns.some(c => c !== 'none')}
+            style={walkInMode && formData.healthConcerns.some(c => c !== 'none') ? {
+              opacity: 0.5,
+              cursor: 'not-allowed'
+            } : {}}
+          >
             Submit Intake Form
           </button>
         </div>
