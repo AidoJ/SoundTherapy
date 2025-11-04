@@ -1127,18 +1127,13 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                 onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
               />
 
-              <label style={{display: 'block', marginBottom: '4px', fontWeight: '600'}}>
-                Service Type <span style={{color: 'red'}}>*</span>
-              </label>
-              <select
+              <input
+                type="text"
+                placeholder="Service Type (e.g., Vibro Acoustic Therapy, PEMF Therapy, Light Therapy)"
+                required
                 value={serviceForm.service_type}
                 onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
-                required
-                style={{marginBottom: '12px'}}
-              >
-                <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
-                <option value="PEMF Therapy">PEMF Therapy</option>
-              </select>
+              />
 
               <textarea
                 placeholder="Description"
@@ -1202,18 +1197,13 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                 onChange={e => setServiceForm({...serviceForm, service_name: e.target.value})}
               />
 
-              <label style={{display: 'block', marginBottom: '4px', fontWeight: '600'}}>
-                Service Type <span style={{color: 'red'}}>*</span>
-              </label>
-              <select
+              <input
+                type="text"
+                placeholder="Service Type (e.g., Vibro Acoustic Therapy, PEMF Therapy, Light Therapy)"
+                required
                 value={serviceForm.service_type}
                 onChange={e => setServiceForm({...serviceForm, service_type: e.target.value})}
-                required
-                style={{marginBottom: '12px'}}
-              >
-                <option value="Vibro Acoustic Therapy">Vibro Acoustic Therapy</option>
-                <option value="PEMF Therapy">PEMF Therapy</option>
-              </select>
+              />
 
               <textarea
                 placeholder="Description"

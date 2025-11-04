@@ -6,6 +6,7 @@ import './BookingForm.css';
 const BookingForm = ({ onBookingComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [services, setServices] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -27,6 +28,31 @@ const BookingForm = ({ onBookingComplete }) => {
     stripePaymentIntentId: null,
     cashReceived: false
   });
+
+  // Load available service types on mount
+  useEffect(() => {
+    loadServiceTypes();
+  }, []);
+
+  // Load distinct service types from database
+  const loadServiceTypes = async () => {
+    try {
+      console.log('🔍 Loading available service types...');
+      const { data, error } = await supabase
+        .from('services')
+        .select('service_type')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // Get unique service types
+      const uniqueTypes = [...new Set(data.map(s => s.service_type))].filter(Boolean);
+      console.log('✅ Found service types:', uniqueTypes);
+      setServiceTypes(uniqueTypes);
+    } catch (err) {
+      console.error('❌ Error loading service types:', err);
+    }
+  };
 
   // Update progress bar (now 7 steps: details, safety, service type, service, datetime, payment, summary)
   const updateProgress = () => {
@@ -454,31 +480,41 @@ const BookingForm = ({ onBookingComplete }) => {
           <p className="step-description">Select the type of therapy you're interested in</p>
 
           <div className="services-grid">
-            <div
-              className={`service-card ${formData.selectedServiceType === 'Vibro Acoustic Therapy' ? 'selected' : ''}`}
-              onClick={() => setFormData({...formData, selectedServiceType: 'Vibro Acoustic Therapy', selectedService: null})}
-            >
-              <div className="service-header">
-                <div>
-                  <span className="service-icon">🎵</span>
-                  <span className="service-name">Vibro Acoustic Therapy</span>
-                </div>
-              </div>
-              <div className="service-desc">Experience deep relaxation through sound vibrations and acoustic frequencies</div>
-            </div>
+            {serviceTypes.length === 0 ? (
+              <p style={{gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)'}}>
+                Loading service types...
+              </p>
+            ) : (
+              serviceTypes.map((serviceType) => {
+                // Get appropriate icon based on service type name
+                const getIcon = (type) => {
+                  const lower = type.toLowerCase();
+                  if (lower.includes('vibro') || lower.includes('acoustic') || lower.includes('sound')) return '🎵';
+                  if (lower.includes('pemf') || lower.includes('magnetic')) return '⚡';
+                  if (lower.includes('light') || lower.includes('photo')) return '💡';
+                  if (lower.includes('laser')) return '🔦';
+                  if (lower.includes('massage')) return '💆';
+                  if (lower.includes('heat') || lower.includes('thermal')) return '🔥';
+                  if (lower.includes('cold') || lower.includes('cryo')) return '❄️';
+                  return '✨';
+                };
 
-            <div
-              className={`service-card ${formData.selectedServiceType === 'PEMF Therapy' ? 'selected' : ''}`}
-              onClick={() => setFormData({...formData, selectedServiceType: 'PEMF Therapy', selectedService: null})}
-            >
-              <div className="service-header">
-                <div>
-                  <span className="service-icon">⚡</span>
-                  <span className="service-name">PEMF Therapy</span>
-                </div>
-              </div>
-              <div className="service-desc">Pulsed Electromagnetic Field therapy for cellular health and energy restoration</div>
-            </div>
+                return (
+                  <div
+                    key={serviceType}
+                    className={`service-card ${formData.selectedServiceType === serviceType ? 'selected' : ''}`}
+                    onClick={() => setFormData({...formData, selectedServiceType: serviceType, selectedService: null})}
+                  >
+                    <div className="service-header">
+                      <div>
+                        <span className="service-icon">{getIcon(serviceType)}</span>
+                        <span className="service-name">{serviceType}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           <div className="step-actions">
