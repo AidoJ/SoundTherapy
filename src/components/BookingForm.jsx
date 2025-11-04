@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
+import PaymentStep from './PaymentStep';
 import './BookingForm.css';
 
 const BookingForm = ({ onBookingComplete }) => {
@@ -19,7 +20,11 @@ const BookingForm = ({ onBookingComplete }) => {
     selectedService: null,
     selectedDate: '',
     selectedTimeSlot: null,
-    paymentMethod: null
+    paymentMethod: null,
+    paymentStatus: null,
+    amountPaidCents: null,
+    stripePaymentIntentId: null,
+    cashReceived: false
   });
 
   // Update progress bar
@@ -168,8 +173,8 @@ const BookingForm = ({ onBookingComplete }) => {
       return;
     }
 
-    if (currentStep === 5 && !formData.paymentMethod) {
-      alert('Please select a payment method');
+    if (currentStep === 5 && formData.paymentStatus !== 'paid') {
+      alert('Please complete payment before continuing');
       return;
     }
 
@@ -202,14 +207,17 @@ const BookingForm = ({ onBookingComplete }) => {
         service_id: formData.selectedService.id,
         selectedslot: formData.selectedDate + 'T' + formData.selectedTimeSlot + ':00',
         duration: formData.selectedService.duration_minutes,
-        paymentmethod: formData.paymentMethod === 'stripe' ? 'Stripe' : 'Cash',
-        paymentstatus: formData.paymentMethod === 'stripe' ? 'paid' : 'pending',
+        paymentmethod: formData.paymentMethod, // 'Stripe' or 'Cash'
+        paymentstatus: formData.paymentStatus, // 'paid'
         bookingstatus: 'confirmed',
-        price_paid_cents: formData.selectedService.price_cents,
+        price_paid_cents: formData.amountPaidCents, // Actual amount paid
+        stripe_payment_intent_id: formData.stripePaymentIntentId, // Stripe payment ID or null
+        cash_received: formData.cashReceived, // true/false
         safety_screen_completed: true,
-        contraindications: JSON.stringify([]),
-        cash_received: false
+        contraindications: JSON.stringify(formData.contraindications)
       };
+
+      console.log('Creating booking with payment data:', bookingData);
 
       const { data, error } = await supabase
         .from('bookings')
@@ -219,14 +227,10 @@ const BookingForm = ({ onBookingComplete }) => {
 
       if (error) throw error;
 
-      if (formData.paymentMethod === 'stripe') {
-        // In production: redirect to Stripe
-        alert('Redirecting to Stripe payment...');
-        // window.location.href = stripeCheckoutUrl;
-      } else {
-        setShowSuccess(true);
-        if (onBookingComplete) onBookingComplete(data);
-      }
+      console.log('✅ Booking created successfully:', data);
+      setShowSuccess(true);
+      if (onBookingComplete) onBookingComplete(data);
+
     } catch (err) {
       console.error('Error creating booking:', err);
       alert('Error creating booking. Please try again.');
@@ -268,23 +272,23 @@ const BookingForm = ({ onBookingComplete }) => {
             </div>
             <div className="summary-row">
               <span>Payment:</span>
-              <span>{formData.paymentMethod === 'stripe' ? 'Card (Paid)' : 'Cash (On arrival)'}</span>
+              <span style={{color: '#00a854', fontWeight: '600'}}>
+                {formData.paymentMethod === 'Stripe' ? '💳 Card (Paid)' : '💵 Cash (Paid)'}
+              </span>
             </div>
             <div className="summary-row total">
-              <span>Total:</span>
-              <span>${(formData.selectedService.price_cents / 100).toFixed(2)}</span>
+              <span>Amount Paid:</span>
+              <span>${(formData.amountPaidCents / 100).toFixed(2)} AUD</span>
             </div>
           </div>
 
-          {formData.paymentMethod === 'cash' && (
-            <div className="info-banner" style={{marginTop: '16px'}}>
-              <strong>📱 What's Next?</strong><br/>
-              • You'll receive an SMS reminder 15 minutes before your session<br/>
-              • Please bring ${(formData.selectedService.price_cents / 100).toFixed(2)} cash when you arrive<br/>
-              • Look for the Sound Healing booth at the market<br/>
-              • Arrive 5 minutes early to check in
-            </div>
-          )}
+          <div className="info-banner" style={{marginTop: '16px'}}>
+            <strong>📱 What's Next?</strong><br/>
+            • You'll receive an SMS reminder 15 minutes before your session<br/>
+            • Look for the Sound Healing booth at the market<br/>
+            • Your payment has been confirmed - just show up and enjoy your session!<br/>
+            • Arrive 5 minutes early to check in
+          </div>
 
           <button className="btn-primary" onClick={() => window.location.reload()} style={{marginTop: '20px'}}>
             Book Another Session
@@ -512,43 +516,24 @@ const BookingForm = ({ onBookingComplete }) => {
       {/* STEP 5: Payment Method */}
       {currentStep === 5 && (
         <section className="booking-step">
-          <h2>Step 5: Payment Method</h2>
-          <p className="step-description">How would you like to pay?</p>
-
-          <div className="payment-options">
-            <div
-              className={`payment-option ${formData.paymentMethod === 'stripe' ? 'selected' : ''}`}
-              onClick={() => setFormData({...formData, paymentMethod: 'stripe'})}
-            >
-              <div className="payment-icon">💳</div>
-              <div className="payment-info">
-                <div className="payment-name">Pay Now with Card</div>
-                <div className="payment-desc">Secure online payment via Stripe • Instant confirmation</div>
-              </div>
-            </div>
-
-            <div
-              className={`payment-option ${formData.paymentMethod === 'cash' ? 'selected' : ''}`}
-              onClick={() => setFormData({...formData, paymentMethod: 'cash'})}
-            >
-              <div className="payment-icon">💵</div>
-              <div className="payment-info">
-                <div className="payment-name">Pay Cash at Market</div>
-                <div className="payment-desc">Reserve your spot • Pay when you arrive</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="step-actions">
-            <button className="btn-secondary" onClick={prevStep}>← Back</button>
-            <button
-              className="btn-primary"
-              onClick={nextStep}
-              disabled={!formData.paymentMethod}
-            >
-              Continue to Summary →
-            </button>
-          </div>
+          <PaymentStep
+            service={formData.selectedService}
+            customerEmail={formData.email}
+            onPaymentSuccess={(paymentData) => {
+              // Update form data with payment information
+              setFormData({
+                ...formData,
+                paymentMethod: paymentData.method,
+                paymentStatus: paymentData.status,
+                amountPaidCents: paymentData.amountPaidCents,
+                stripePaymentIntentId: paymentData.stripePaymentIntentId,
+                cashReceived: paymentData.cashReceived
+              });
+              // Automatically advance to summary step
+              setCurrentStep(6);
+            }}
+            onBack={prevStep}
+          />
         </section>
       )}
 
@@ -580,18 +565,29 @@ const BookingForm = ({ onBookingComplete }) => {
             </div>
             <div className="summary-row">
               <span>Payment Method:</span>
-              <span>{formData.paymentMethod === 'stripe' ? 'Card Payment (Stripe)' : 'Cash at Market'}</span>
+              <span>{formData.paymentMethod === 'Stripe' ? '💳 Card Payment' : '💵 Cash Payment'}</span>
+            </div>
+            <div className="summary-row">
+              <span>Payment Status:</span>
+              <span style={{color: '#00a854', fontWeight: '600'}}>✅ Paid</span>
             </div>
             <div className="summary-row total">
-              <span>Total:</span>
-              <span>${(formData.selectedService?.price_cents / 100).toFixed(2)}</span>
+              <span>Amount Paid:</span>
+              <span>${(formData.amountPaidCents / 100).toFixed(2)} AUD</span>
             </div>
           </div>
 
-          {formData.paymentMethod === 'cash' && (
-            <div className="info-banner" style={{marginTop: '16px'}}>
-              <strong>💵 Cash Payment</strong><br/>
-              Your booking is reserved! Please bring exact cash payment when you arrive at the market.
+          {formData.paymentMethod === 'Cash' && formData.cashReceived && (
+            <div className="success-banner" style={{marginTop: '16px'}}>
+              <strong>✅ Cash Payment Received</strong><br/>
+              Cash payment of ${(formData.amountPaidCents / 100).toFixed(2)} has been confirmed. Your booking is secured!
+            </div>
+          )}
+
+          {formData.paymentMethod === 'Stripe' && (
+            <div className="success-banner" style={{marginTop: '16px'}}>
+              <strong>✅ Card Payment Successful</strong><br/>
+              Your payment has been processed securely. Confirmation email sent to {formData.email}
             </div>
           )}
 
@@ -602,7 +598,7 @@ const BookingForm = ({ onBookingComplete }) => {
               onClick={confirmBooking}
               disabled={loading}
             >
-              {loading ? 'Processing...' : (formData.paymentMethod === 'stripe' ? 'Proceed to Payment →' : 'Reserve Booking →')}
+              {loading ? 'Confirming Booking...' : 'Confirm & Complete Booking ✓'}
             </button>
           </div>
         </section>
