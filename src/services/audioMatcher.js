@@ -25,6 +25,7 @@ export const fetchAudioFilesWithMetadata = async () => {
 /**
  * Intelligent frequency matcher that dynamically uses audio file data from database
  * to select the most appropriate audio file
+ * Returns: { frequency: number, audioFile: object } or just frequency (for backward compatibility)
  */
 export const matchAudioFile = async (formData) => {
   console.log('🎯 === AUDIO MATCHER DEBUG START ===');
@@ -290,6 +291,13 @@ export const matchAudioFile = async (formData) => {
   let maxScore = 0;
   let topMatches = [];
 
+  console.log('📊 Scoring results:', Object.entries(scores).map(([key, data]) => ({
+    key,
+    fileName: data.audioFile?.file_name,
+    score: data.score,
+    frequency: data.frequency
+  })));
+
   Object.entries(scores).forEach(([key, data]) => {
     if (data.score > maxScore) {
       maxScore = data.score;
@@ -309,11 +317,53 @@ export const matchAudioFile = async (formData) => {
   const recommendedFrequency = selectedMatch?.frequency || null;
   const selectedAudioFile = selectedMatch?.audioFile || null;
 
+  console.log('🎯 Selection process:', {
+    topMatchesCount: topMatches.length,
+    maxScore,
+    selectedMatch: selectedMatch ? {
+      fileName: selectedMatch.audioFile?.file_name,
+      frequency: selectedMatch.frequency,
+      score: selectedMatch.score
+    } : null
+  });
+
   // FALLBACK SYSTEM:
   // 1. If we found a match (score > 0), use it
   if (maxScore > 0 && recommendedFrequency) {
     console.log('✅ Matched Frequency:', recommendedFrequency, 'with score:', maxScore);
-    console.log('Selected Audio File:', selectedAudioFile);
+    console.log('Selected Audio File:', selectedAudioFile?.file_name);
+    
+    // CRITICAL CHECK: If this was a short session, verify the selected file is a demo file
+    if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
+      const selectedFileName = (selectedAudioFile?.file_name || '').toLowerCase();
+      const selectedFileUrl = (selectedAudioFile?.file_url || '').toLowerCase();
+      const isDemoFile = selectedFileName.includes('demo') || selectedFileUrl.includes('demo');
+      
+      if (!isDemoFile) {
+        console.error('❌ ERROR: Selected file is NOT a demo file for short session!');
+        console.error('Selected file:', selectedAudioFile?.file_name);
+        console.error('This should not happen - filtering should have prevented this');
+        // Force selection from demo files only
+        const demoFiles = audioFiles.filter(audio => {
+          const fileName = (audio.file_name || '').toLowerCase();
+          const fileUrl = (audio.file_url || '').toLowerCase();
+          return fileName.includes('demo') || fileUrl.includes('demo');
+        });
+        if (demoFiles.length > 0) {
+          const randomDemo = demoFiles[Math.floor(Math.random() * demoFiles.length)];
+          console.log('🔄 Correcting: Using random demo file instead:', randomDemo.file_name);
+          // Store the selected audio file for later retrieval
+          matchAudioFile.selectedAudioFile = randomDemo;
+          return randomDemo.frequency_min;
+        }
+      }
+    }
+    
+    // Store the selected audio file for later retrieval
+    if (selectedAudioFile) {
+      matchAudioFile.selectedAudioFile = selectedAudioFile;
+    }
+    
     return recommendedFrequency;
   }
 
@@ -324,6 +374,7 @@ export const matchAudioFile = async (formData) => {
 
   if (fallback432) {
     console.log('⚠️ No match found - Using fallback: 432 Hz (Earth Resonance)');
+    matchAudioFile.selectedAudioFile = fallback432;
     return 432;
   }
 
@@ -331,20 +382,33 @@ export const matchAudioFile = async (formData) => {
   if (audioFiles.length > 0) {
     const firstAvailable = audioFiles[0];
     console.log('⚠️ No 432 Hz available - Using first available audio file:', firstAvailable.file_name);
+    matchAudioFile.selectedAudioFile = firstAvailable;
     return firstAvailable.frequency_min;
   }
 
   // 4. Last resort - return 432 Hz even if file doesn't exist (will show error to user)
   console.error('❌ No audio files available in database!');
+  matchAudioFile.selectedAudioFile = null;
   return 432;
 };
 
 /**
  * Get audio file URL from Supabase based on frequency
+ * If matchAudioFile was called first, it will use the pre-selected audio file
  */
 export const getAudioFileForFrequency = async (frequency) => {
   try {
     console.log('🔍 Looking for audio file for frequency:', frequency);
+    
+    // Check if matchAudioFile already selected a specific file
+    // This is important for short sessions where we want demo files only
+    if (matchAudioFile.selectedAudioFile) {
+      console.log('✅ Using pre-selected audio file from matchAudioFile:', matchAudioFile.selectedAudioFile.file_name);
+      const preSelected = matchAudioFile.selectedAudioFile;
+      // Clear it after use
+      matchAudioFile.selectedAudioFile = null;
+      return preSelected;
+    }
 
     // Query audio_files table for matching frequency
     // We want: frequency_min <= frequency <= frequency_max
