@@ -376,19 +376,19 @@ export const getAudioFileForFrequency = async (frequency) => {
     // This is important for short sessions where we want demo files only
     if (matchAudioFile.selectedAudioFile) {
       console.log('✅ Using pre-selected audio file from matchAudioFile:', matchAudioFile.selectedAudioFile.file_name);
-      const preSelected = matchAudioFile.selectedAudioFile;
-      // Clear it after use
-      matchAudioFile.selectedAudioFile = null;
-      return preSelected;
+      // DON'T clear it - AudioPlayer may call this multiple times
+      return matchAudioFile.selectedAudioFile;
     }
 
     // Query audio_files table for matching frequency
     // We want: frequency_min <= frequency <= frequency_max
-    const { data, error } = await supabase
+    let query = supabase
       .from('audio_files')
       .select('*')
       .lte('frequency_min', frequency)  // frequency_min <= target
       .gte('frequency_max', frequency); // frequency_max >= target
+
+    const { data, error } = await query;
 
     console.log('Query result:', { data, error });
 
@@ -400,6 +400,19 @@ export const getAudioFileForFrequency = async (frequency) => {
     if (!data || data.length === 0) {
       console.log('No audio file found for frequency:', frequency);
       return null;
+    }
+
+    // If multiple matches, prefer demo files (for frequencies 185 or 190 which are demo files)
+    if (data.length > 1 && (frequency === 185 || frequency === 190)) {
+      const demoFile = data.find(file => {
+        const fileName = (file.file_name || '').toLowerCase();
+        const fileUrl = (file.file_url || '').toLowerCase();
+        return fileName.includes('demo') || fileUrl.includes('demo');
+      });
+      if (demoFile) {
+        console.log('✅ Found demo file for frequency:', demoFile.file_name);
+        return demoFile;
+      }
     }
 
     // If multiple matches, return the first one
