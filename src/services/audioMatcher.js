@@ -42,7 +42,7 @@ export const matchAudioFile = async (formData) => {
   }
 
   // NEW: Filter for short sessions (30 minutes or less)
-  // If session duration is 30 minutes or less, only use heart chakra or violet flame audio files
+  // If session duration is 30 minutes or less, only use audio files with "demo" in the title
   const sessionDuration = formData.sessionDuration;
   // Convert to number if it's a string
   const sessionDurationNum = sessionDuration !== null && sessionDuration !== undefined 
@@ -56,48 +56,17 @@ export const matchAudioFile = async (formData) => {
   });
   
   if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
-    console.log('⏱️ Short session detected (≤30 minutes) - Filtering to heart chakra or violet flame audio files');
+    console.log('⏱️ Short session detected (≤30 minutes) - Filtering to audio files with "demo" in title');
     console.log('📊 Session Duration:', sessionDurationNum, 'minutes');
     
-    // First try: Filter by file name
-    let filteredFiles = audioFiles.filter(audio => {
+    // Filter by file name - must contain "demo"
+    const filteredFiles = audioFiles.filter(audio => {
       const fileName = (audio.file_name || '').toLowerCase();
-      const frequencyFamily = (audio.frequency_family || '').toLowerCase();
-      
-      // Check file name for heart chakra or violet flame
-      const hasHeartChakra = fileName.includes('heart chakra') || 
-                            fileName.includes('heartchakra') ||
-                            (fileName.includes('heart') && fileName.includes('chakra'));
-      const hasVioletFlame = fileName.includes('violet flame') || 
-                             fileName.includes('violetflame') ||
-                             (fileName.includes('violet') && fileName.includes('flame'));
-      
-      // Also check frequency_family field
-      const familyMatch = frequencyFamily.includes('heart') || 
-                         frequencyFamily.includes('violet');
-      
-      return hasHeartChakra || hasVioletFlame || familyMatch;
+      return fileName.includes('demo');
     });
 
-    // Second try: If no files found by name, check metadata fields
-    if (filteredFiles.length === 0) {
-      console.log('🔍 No files found by name, checking metadata fields...');
-      filteredFiles = audioFiles.filter(audio => {
-        const healingProps = (audio.healing_properties || []).map(p => p.toLowerCase()).join(' ');
-        const primaryIntents = (audio.primary_intentions || []).map(i => i.toLowerCase()).join(' ');
-        const allText = healingProps + ' ' + primaryIntents;
-        
-        return allText.includes('heart chakra') || 
-               allText.includes('heartchakra') ||
-               allText.includes('violet flame') ||
-               allText.includes('violetflame') ||
-               (allText.includes('heart') && allText.includes('chakra')) ||
-               (allText.includes('violet') && allText.includes('flame'));
-      });
-    }
-
     if (filteredFiles.length > 0) {
-      console.log(`✅ Found ${filteredFiles.length} heart chakra/violet flame audio file(s) for short session`);
+      console.log(`✅ Found ${filteredFiles.length} demo audio file(s) for short session`);
       console.log('📋 Filtered files:', filteredFiles.map(f => ({ 
         name: f.file_name, 
         freq: `${f.frequency_min}-${f.frequency_max}Hz` 
@@ -105,7 +74,7 @@ export const matchAudioFile = async (formData) => {
       // STRICT: Only use filtered files, no fallback
       audioFiles = filteredFiles;
     } else {
-      console.error('❌ No heart chakra or violet flame audio files found in database!');
+      console.error('❌ No demo audio files found in database!');
       console.warn('📋 Available file names (first 10):', audioFiles.slice(0, 10).map(f => f.file_name));
       // Still restrict to filtered (empty) - this will cause fallback to 432Hz
       audioFiles = filteredFiles;
