@@ -89,7 +89,7 @@ function App() {
           selected_frequencies: [],
           health_concerns: formData.healthConcerns,
           medications: '',
-          vibration_intensity: 0,
+          vibration_intensity: 'moderate', // Must be 'gentle', 'moderate', or 'deep' per database constraint
           emotional_indicators: [],
           intuitive_messages: '',
           consent_given: formData.consentGiven,
