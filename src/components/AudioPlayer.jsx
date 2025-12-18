@@ -16,6 +16,9 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(null);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [endAudioFile, setEndAudioFile] = useState(null);
+  const fadeIntervalRef = useRef(null);
+  const [isFading, setIsFading] = useState(false);
+  const originalVolumeRef = useRef(70); // Store original volume before fade
 
   // Fetch audio file from database based on frequency
   useEffect(() => {
@@ -35,6 +38,23 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
 
     loadAudioFile();
   }, [frequency]);
+
+  // Enable looping for demo files or short sessions (30 min or less)
+  useEffect(() => {
+    if (audioRef.current && audioFile) {
+      const fileName = (audioFile || '').toLowerCase();
+      const isDemoFile = fileName.includes('demo');
+      const isShortSession = sessionDuration !== null && sessionDuration !== undefined && Number(sessionDuration) <= 30;
+      
+      // Enable looping if it's a demo file or short session
+      if (isDemoFile || isShortSession) {
+        audioRef.current.loop = true;
+        console.log('🔄 Looping enabled for audio file (demo file or short session)');
+      } else {
+        audioRef.current.loop = false;
+      }
+    }
+  }, [audioFile, sessionDuration]);
 
   // Fetch SessionEnd.mp3 from audio_files table
   useEffect(() => {
@@ -68,7 +88,7 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
     }
   }, [sessionDuration]);
 
-  // Session countdown timer
+  // Session countdown timer with fade-out in last minute
   useEffect(() => {
     if (sessionTimeRemaining === null || sessionTimeRemaining <= 0) {
       return;
@@ -81,6 +101,13 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
           handleSessionEnd();
           return 0;
         }
+        
+        // Start fade-out in the last 60 seconds (1 minute)
+        if (prev <= 60 && !isFading && audioRef.current) {
+          setIsFading(true);
+          startFadeOut();
+        }
+        
         return prev - 1;
       });
     }, 1000);
@@ -90,9 +117,58 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
         clearInterval(timerIntervalRef.current);
       }
     };
-  }, [sessionTimeRemaining]);
+  }, [sessionTimeRemaining, isFading]);
+
+  // Fade-out function: gradually reduce volume over 60 seconds
+  const startFadeOut = () => {
+    if (!audioRef.current) return;
+    
+    // Store original volume before fade starts
+    originalVolumeRef.current = volume;
+    
+    // Get the actual current volume from the audio element
+    const startVolume = audioRef.current.volume;
+    const fadeDuration = 60; // 60 seconds
+    const steps = 60; // Update every second
+    const volumeStep = startVolume / steps;
+    let currentStep = 0;
+
+    console.log('🔉 Starting fade-out over 60 seconds from volume:', Math.round(startVolume * 100) + '%');
+
+    fadeIntervalRef.current = setInterval(() => {
+      if (!audioRef.current || sessionEnded) {
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        return;
+      }
+
+      currentStep++;
+      const newVolume = Math.max(0, startVolume - (volumeStep * currentStep));
+      audioRef.current.volume = newVolume;
+
+      // Update the volume state to reflect the fade (for UI)
+      setVolume(Math.round(newVolume * 100));
+
+      if (currentStep >= steps || newVolume <= 0) {
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        audioRef.current.volume = 0;
+        console.log('🔇 Fade-out complete');
+      }
+    }, 1000); // Update every second
+  };
 
   const handleSessionEnd = () => {
+    // Clear fade interval if running
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+
     // Stop current audio
     if (audioRef.current) {
       audioRef.current.pause();
@@ -100,16 +176,20 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
       setIsPlaying(false);
     }
 
-    // Play SessionEnd.mp3 on loop
+    // Play SessionEnd.mp3 on loop at original volume (not faded volume)
     if (endAudioRef.current && endAudioFile) {
       endAudioRef.current.loop = true;
-      endAudioRef.current.volume = volume / 100;
+      // Use the original volume before fade started
+      const originalVolume = originalVolumeRef.current;
+      endAudioRef.current.volume = originalVolume / 100;
+      setVolume(originalVolume); // Restore volume display
       endAudioRef.current.play().catch(err => {
         console.error('Failed to play end audio:', err);
       });
     }
 
     setSessionEnded(true);
+    setIsFading(false);
 
     // Notify parent component
     if (onSessionEnd) {
@@ -129,7 +209,12 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
 
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => {
+      // If looping is enabled, don't stop playing
+      if (!audio.loop) {
+        setIsPlaying(false);
+      }
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
@@ -143,10 +228,12 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
   }, [audioFile]);
 
   useEffect(() => {
-    if (audioRef.current) {
+    // Only update volume if not currently fading out
+    // This allows manual volume changes but prevents fade-out from being overridden
+    if (audioRef.current && !isFading) {
       audioRef.current.volume = volume / 100;
     }
-  }, [volume]);
+  }, [volume, isFading]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
