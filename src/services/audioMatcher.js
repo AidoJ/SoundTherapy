@@ -31,7 +31,7 @@ export const matchAudioFile = async (formData) => {
   console.log('📝 Form Data Received:', JSON.stringify(formData, null, 2));
 
   // Fetch all audio files from database
-  const audioFiles = await fetchAudioFilesWithMetadata();
+  let audioFiles = await fetchAudioFilesWithMetadata();
 
   console.log('🎵 Audio Files from Database:', audioFiles.length, 'files found');
   console.log('📋 Audio Files Details:', JSON.stringify(audioFiles, null, 2));
@@ -39,6 +39,28 @@ export const matchAudioFile = async (formData) => {
   if (!audioFiles || audioFiles.length === 0) {
     console.error('❌ No audio files found in database');
     return 432; // Default fallback
+  }
+
+  // NEW: Filter for short sessions (30 minutes or less)
+  // If session duration is 30 minutes or less, only use heart chakra or violet flame audio files
+  const sessionDuration = formData.sessionDuration;
+  if (sessionDuration !== null && sessionDuration !== undefined && sessionDuration <= 30) {
+    console.log('⏱️ Short session detected (≤30 minutes) - Filtering to heart chakra or violet flame audio files');
+    
+    const filteredFiles = audioFiles.filter(audio => {
+      const fileName = (audio.file_name || '').toLowerCase();
+      const hasHeartChakra = fileName.includes('heart chakra') || fileName.includes('heartchakra');
+      const hasVioletFlame = fileName.includes('violet flame') || fileName.includes('violetflame');
+      
+      return hasHeartChakra || hasVioletFlame;
+    });
+
+    if (filteredFiles.length > 0) {
+      console.log(`✅ Found ${filteredFiles.length} heart chakra/violet flame audio file(s) for short session`);
+      audioFiles = filteredFiles;
+    } else {
+      console.warn('⚠️ No heart chakra or violet flame audio files found - using all available files');
+    }
   }
 
   const scores = {};
