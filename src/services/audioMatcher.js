@@ -52,18 +52,27 @@ export const matchAudioFile = async (formData) => {
   console.log('🔍 Session Duration Check:', { 
     raw: sessionDuration, 
     converted: sessionDurationNum, 
-    isShort: sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30 
+    isShort: sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30,
+    formDataKeys: Object.keys(formData),
+    allAudioFileNames: audioFiles.map(f => f.file_name)
   });
   
   if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
     console.log('⏱️ Short session detected (≤30 minutes) - Filtering to audio files with "demo" in title');
     console.log('📊 Session Duration:', sessionDurationNum, 'minutes');
+    console.log('📋 All audio files before filtering:', audioFiles.map(f => f.file_name));
     
-    // Filter by file name - must contain "demo"
+    // Filter by file name - must contain "demo" (case-insensitive)
+    // Also check file_url in case file_name is not set
     const filteredFiles = audioFiles.filter(audio => {
       const fileName = (audio.file_name || '').toLowerCase();
-      return fileName.includes('demo');
+      const fileUrl = (audio.file_url || '').toLowerCase();
+      const hasDemo = fileName.includes('demo') || fileUrl.includes('demo');
+      console.log(`  Checking file_name: "${fileName}", file_url: "${fileUrl.substring(0, 50)}...": ${hasDemo ? '✅ MATCH' : '❌ no match'}`);
+      return hasDemo;
     });
+
+    console.log(`📊 Filtering result: ${filteredFiles.length} demo file(s) found out of ${audioFiles.length} total files`);
 
     if (filteredFiles.length > 0) {
       console.log(`✅ Found ${filteredFiles.length} demo audio file(s) for short session`);
@@ -75,10 +84,13 @@ export const matchAudioFile = async (formData) => {
       audioFiles = filteredFiles;
     } else {
       console.error('❌ No demo audio files found in database!');
-      console.warn('📋 Available file names (first 10):', audioFiles.slice(0, 10).map(f => f.file_name));
+      console.warn('📋 Available file names (all):', audioFiles.map(f => f.file_name));
+      console.warn('⚠️ Will fall back to all files - this may not be desired behavior');
       // Still restrict to filtered (empty) - this will cause fallback to 432Hz
       audioFiles = filteredFiles;
     }
+  } else {
+    console.log('ℹ️ Not a short session or sessionDuration not set - using all audio files');
   }
 
   const scores = {};
