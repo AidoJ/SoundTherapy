@@ -149,9 +149,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
   const calculateProgress = () => {
     const requiredFields = walkInMode
       ? [
-          formData.fullName,
-          formData.email,
-          formData.phone
+          formData.fullName
         ]
       : [
           formData.fullName,
@@ -382,6 +380,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 required
               />
             </div>
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="dateOfBirth">Date of Birth</label>
               <input
@@ -392,7 +391,9 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 onChange={handleInputChange}
               />
             </div>
+            )}
           </div>
+          {!walkInMode && (
           <div className="form-grid cols-2">
             <div className="form-group">
               <label htmlFor="phone">Phone *</label>
@@ -417,6 +418,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
               />
             </div>
           </div>
+          )}
           <div className="form-grid cols-2">
             <div className="form-group">
               <label htmlFor="todaysDate">Today's Date</label>
@@ -428,6 +430,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 onChange={handleInputChange}
               />
             </div>
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="practitioner">Practitioner</label>
               <input
@@ -438,6 +441,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 onChange={handleInputChange}
               />
             </div>
+            )}
           </div>
         </section>
 
@@ -560,27 +564,29 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
             </div>
           </div>
           <div style={{ marginTop: '24px' }}>
+            {/* Body map with pain markers (hidden in walk-in mode) */}
+            {!walkInMode && (
             <div className="bodymap">
               <div className="svgbox">
                 <div className="btns" style={{ gap: '6px', justifyContent: 'flex-end', padding: '8px 10px 0 10px' }}>
-                  <button 
-                    className="secondary" 
-                    id="frontBtn" 
+                  <button
+                    className="secondary"
+                    id="frontBtn"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, bodyView: 'front' }))}
-                    style={{ 
+                    style={{
                       background: formData.bodyView === 'front' ? '#008e8c' : '#e9f6f4',
                       color: formData.bodyView === 'front' ? '#fff' : '#0a6e6a'
                     }}
                   >
                     Front
                   </button>
-                  <button 
-                    className="secondary" 
-                    id="backBtn" 
+                  <button
+                    className="secondary"
+                    id="backBtn"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, bodyView: 'back' }))}
-                    style={{ 
+                    style={{
                       background: formData.bodyView === 'back' ? '#008e8c' : '#e9f6f4',
                       color: formData.bodyView === 'back' ? '#fff' : '#0a6e6a'
                     }}
@@ -588,11 +594,11 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                     Back
                   </button>
                 </div>
-                <svg 
-                  viewBox="0 0 360 760" 
-                  id="bodySvg" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  aria-label="Tap to mark pain points" 
+                <svg
+                  viewBox="0 0 360 760"
+                  id="bodySvg"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-label="Tap to mark pain points"
                   style={{ width: '100%', height: 'auto' }}
                   onClick={handleBodyClick}
                 >
@@ -664,6 +670,8 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                   </g>
                 </svg>
               </div>
+            </div>
+            )}
               <div>
                 <label>Main Pain Areas</label>
                 <div className="chips">
@@ -686,9 +694,11 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
               </label>
             ))}
                 </div>
+                {!walkInMode && (
+                <>
                 <div className="btns" style={{ marginTop: '10px' }}>
-                  <button 
-                    className="secondary" 
+                  <button
+                    className="secondary"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, painMarkers: [] }))}
                   >
@@ -696,13 +706,14 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                   </button>
                 </div>
                 <div className="muted" style={{ marginTop: '8px' }}>
-                  {formData.painMarkers.length === 0 
-                    ? 'No pain markers added.' 
+                  {formData.painMarkers.length === 0
+                    ? 'No pain markers added.'
                     : `Pain markers: ${formData.painMarkers.map((p, i) => `#${i+1} (x:${p.x}, y:${p.y})`).join(', ')}`
                   }
                 </div>
+                </>
+                )}
               </div>
-            </div>
           </div>
         </section>
 
