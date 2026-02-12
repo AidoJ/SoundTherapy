@@ -46,23 +46,7 @@ export const matchAudioFile = async (formData) => {
     : null;
   
   if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
-    // Find demo files
-    const demoFiles = audioFiles.filter(audio => {
-      const fileName = (audio.file_name || '').toLowerCase();
-      const fileUrl = (audio.file_url || '').toLowerCase();
-      return fileName.includes('demo') || fileUrl.includes('demo');
-    });
-
-    if (demoFiles.length > 0) {
-      // Randomly pick one of the demo files
-      const randomDemo = demoFiles[Math.floor(Math.random() * demoFiles.length)];
-      console.log('⏱️ Short session (≤30 min) - Selected demo file:', randomDemo.file_name);
-      matchAudioFile.selectedAudioFile = randomDemo;
-      return randomDemo.frequency_min;
-    } else {
-      console.error('❌ No demo files found for short session');
-      return 432; // Fallback
-    }
+    console.log('⏱️ Short session (≤30 min) - using symptom scoring to select frequency');
   }
 
   // ELSE: Continue with normal matching process (original logic)
@@ -160,27 +144,31 @@ export const matchAudioFile = async (formData) => {
     });
   }
 
-  // 4. SYMPTOM LEVELS (Weight: 5 points each - higher weight for symptom-based matching)
+  // 4. SYMPTOM LEVELS (Graduated scoring: 2/5/8 points based on severity)
+  const painLevel = formData.painLevel ?? formData.physicalEnergy ?? 0;
+  const stressLevel = formData.stressAnxietyLevel ?? formData.emotionalBalance ?? 0;
+  const sleepQuality = formData.sleepQuality ?? 5;
+
   audioFiles.forEach(audio => {
     const key = `${audio.frequency_min}-${audio.frequency_max}`;
 
     if (!audio.healing_properties) return;
 
-    // High pain level (6+) -> look for "pain", "inflammation", "relief" properties
-    const painLevel = formData.painLevel ?? formData.physicalEnergy ?? 0;
-    if (painLevel >= 6) {
+    // Pain: graduated scoring (1-3 = +2, 4-6 = +5, 7-10 = +8)
+    if (painLevel >= 1) {
+      const painScore = painLevel >= 7 ? 8 : painLevel >= 4 ? 5 : 2;
       const hasRelevantProperty = audio.healing_properties.some(prop =>
         prop.toLowerCase().includes('pain') ||
         prop.toLowerCase().includes('inflammation') ||
         prop.toLowerCase().includes('relief') ||
-        prop.toLowerCase().includes('healing')
+        prop.toLowerCase().includes('tension')
       );
-      if (hasRelevantProperty) scores[key].score += 5;
+      if (hasRelevantProperty) scores[key].score += painScore;
     }
 
-    // High stress/anxiety level (6+) -> anxiety/stress relief frequencies
-    const stressLevel = formData.stressAnxietyLevel ?? formData.emotionalBalance ?? 0;
-    if (stressLevel >= 6) {
+    // Stress: graduated scoring (1-3 = +2, 4-6 = +5, 7-10 = +8)
+    if (stressLevel >= 1) {
+      const stressScore = stressLevel >= 7 ? 8 : stressLevel >= 4 ? 5 : 2;
       const hasRelevantProperty = audio.healing_properties.some(prop =>
         prop.toLowerCase().includes('stress') ||
         prop.toLowerCase().includes('anxiety') ||
@@ -188,23 +176,27 @@ export const matchAudioFile = async (formData) => {
         prop.toLowerCase().includes('emotional') ||
         prop.toLowerCase().includes('harmony')
       );
-      if (hasRelevantProperty) scores[key].score += 5;
+      if (hasRelevantProperty) scores[key].score += stressScore;
     }
 
-    // Poor sleep quality (1-2) -> sleep/relaxation frequencies
-    const sleepQuality = formData.sleepQuality ?? 3;
-    if (sleepQuality <= 2) {
+    // Sleep: graduated scoring (quality 3 = +2, quality 2 = +5, quality 1 = +8)
+    if (sleepQuality <= 3) {
+      const sleepScore = sleepQuality <= 1 ? 8 : sleepQuality <= 2 ? 5 : 2;
       const hasRelevantProperty = audio.healing_properties.some(prop =>
         prop.toLowerCase().includes('sleep') ||
         prop.toLowerCase().includes('insomnia') ||
         prop.toLowerCase().includes('relaxation') ||
-        prop.toLowerCase().includes('rest')
+        prop.toLowerCase().includes('fatigue')
       );
-      if (hasRelevantProperty) scores[key].score += 5;
+      if (hasRelevantProperty) scores[key].score += sleepScore;
     }
   });
 
-  // 5. MAIN PAIN AREAS (Weight: 6 points - specific targeting)
+  // 5. MAIN PAIN AREAS (Weight: 10 points when no primaryGoals, else 6 points)
+  const hasPrimaryGoals = (formData.primaryGoals && formData.primaryGoals.length > 0) ||
+                          (formData.intention && formData.intention.length > 0);
+  const painAreaWeight = hasPrimaryGoals ? 6 : 10;
+
   if (formData.mainPainAreas && formData.mainPainAreas.length > 0) {
     formData.mainPainAreas.forEach(area => {
       audioFiles.forEach(audio => {
@@ -229,7 +221,7 @@ export const matchAudioFile = async (formData) => {
         );
 
         if (matchesProperty) {
-          scores[key].score += 6;
+          scores[key].score += painAreaWeight;
         }
       });
     });
@@ -304,32 +296,6 @@ export const matchAudioFile = async (formData) => {
   if (maxScore > 0 && recommendedFrequency) {
     console.log('✅ Matched Frequency:', recommendedFrequency, 'with score:', maxScore);
     console.log('Selected Audio File:', selectedAudioFile?.file_name);
-    
-    // CRITICAL CHECK: If this was a short session, verify the selected file is a demo file
-    if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
-      const selectedFileName = (selectedAudioFile?.file_name || '').toLowerCase();
-      const selectedFileUrl = (selectedAudioFile?.file_url || '').toLowerCase();
-      const isDemoFile = selectedFileName.includes('demo') || selectedFileUrl.includes('demo');
-      
-      if (!isDemoFile) {
-        console.error('❌ ERROR: Selected file is NOT a demo file for short session!');
-        console.error('Selected file:', selectedAudioFile?.file_name);
-        console.error('This should not happen - filtering should have prevented this');
-        // Force selection from demo files only
-        const demoFiles = audioFiles.filter(audio => {
-          const fileName = (audio.file_name || '').toLowerCase();
-          const fileUrl = (audio.file_url || '').toLowerCase();
-          return fileName.includes('demo') || fileUrl.includes('demo');
-        });
-        if (demoFiles.length > 0) {
-          const randomDemo = demoFiles[Math.floor(Math.random() * demoFiles.length)];
-          console.log('🔄 Correcting: Using random demo file instead:', randomDemo.file_name);
-          // Store the selected audio file for later retrieval
-          matchAudioFile.selectedAudioFile = randomDemo;
-          return randomDemo.frequency_min;
-        }
-      }
-    }
     
     // Store the selected audio file for later retrieval
     if (selectedAudioFile) {

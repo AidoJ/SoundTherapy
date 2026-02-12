@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { getAudioFileForFrequency } from '../services/audioMatcher';
+import endSessionAudio from '../assets/EndSession.m4a';
 import './AudioPlayer.css';
 
 const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
@@ -15,7 +16,7 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
   const [loading, setLoading] = useState(true);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(null);
   const [sessionEnded, setSessionEnded] = useState(false);
-  const [endAudioFile, setEndAudioFile] = useState(null);
+  const endAudioFile = endSessionAudio;
   const fadeIntervalRef = useRef(null);
   const [isFading, setIsFading] = useState(false);
   const originalVolumeRef = useRef(70); // Store original volume before fade
@@ -56,29 +57,7 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
     }
   }, [audioFile, sessionDuration]);
 
-  // Fetch SessionEnd.mp3 from audio_files table
-  useEffect(() => {
-    const loadEndAudio = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('audio_files')
-          .select('file_url')
-          .ilike('file_name', '%SessionEnd%')
-          .limit(1)
-          .single();
-
-        if (error) {
-          console.error('Error loading SessionEnd.mp3:', error);
-        } else if (data) {
-          setEndAudioFile(data.file_url);
-        }
-      } catch (err) {
-        console.error('Error fetching end audio:', err);
-      }
-    };
-
-    loadEndAudio();
-  }, []);
+  // EndSession.m4a is imported as a local asset — no database fetch needed
 
   // Initialize session timer
   useEffect(() => {
@@ -323,7 +302,7 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
           textAlign: 'center'
         }}>
           <p style={{margin: 0, fontWeight: '600', color: '#92400e'}}>
-            🎵 Session time complete! SessionEnd.mp3 is now playing.
+            🎵 Session time complete! End session sound is now playing.
           </p>
           <p style={{margin: '8px 0 0 0', fontSize: '14px', color: '#78350f'}}>
             Please complete the Therapist Signature section below.
@@ -368,12 +347,10 @@ const AudioPlayer = ({ frequency, sessionDuration, onSessionEnd }) => {
         <source src={audioFile.replace('.mp3', '.wav')} type="audio/wav" />
       </audio>
 
-      {/* SessionEnd.mp3 audio element */}
-      {endAudioFile && (
-        <audio ref={endAudioRef} src={endAudioFile} preload="metadata">
-          <source src={endAudioFile} type="audio/mpeg" />
-        </audio>
-      )}
+      {/* EndSession.m4a audio element */}
+      <audio ref={endAudioRef} src={endAudioFile} preload="metadata">
+        <source src={endAudioFile} type="audio/mp4" />
+      </audio>
     </div>
   );
 };

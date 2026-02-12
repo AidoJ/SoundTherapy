@@ -384,6 +384,47 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
     }
   };
 
+  const handleDeleteAudioFile = async (audioFile) => {
+    if (!confirm(`Are you sure you want to delete "${audioFile.file_name}"?`)) return;
+
+    setLoading(true);
+    try {
+      // 1. Delete from storage bucket
+      if (audioFile.file_url) {
+        // Extract the file path from the public URL
+        const urlParts = audioFile.file_url.split('/audio-files/');
+        if (urlParts.length > 1) {
+          const storagePath = decodeURIComponent(urlParts[1]);
+          const { error: storageError } = await supabase.storage
+            .from('audio-files')
+            .remove([storagePath]);
+
+          if (storageError) {
+            console.error('Error deleting from storage:', storageError);
+          }
+        }
+      }
+
+      // 2. Delete from audio_files table
+      const { error: dbError } = await supabase
+        .from('audio_files')
+        .delete()
+        .eq('id', audioFile.id);
+
+      if (dbError) {
+        console.error('Error deleting audio file record:', dbError);
+        alert('Error deleting audio file: ' + dbError.message);
+      } else {
+        alert('Audio file deleted successfully!');
+        fetchAudioFiles();
+      }
+    } catch (err) {
+      console.error('Error deleting audio file:', err);
+      alert('Error deleting audio file: ' + err.message);
+    }
+    setLoading(false);
+  };
+
   const editClient = (client) => {
     setEditingItem(client);
     setClientForm({
@@ -703,6 +744,7 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                         <th>Primary Intentions</th>
                         <th>Healing Properties</th>
                         <th>URL</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -724,6 +766,9 @@ const AdminPanel = ({ onLogout, onStartSession }) => {
                             <a href={audio.file_url} target="_blank" rel="noopener noreferrer" className="link-btn">
                               🔗 View
                             </a>
+                          </td>
+                          <td>
+                            <button className="btn-delete" onClick={() => handleDeleteAudioFile(audio)}>Delete</button>
                           </td>
                         </tr>
                       ))}
