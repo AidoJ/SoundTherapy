@@ -5,19 +5,21 @@ import { supabase } from './supabaseClient';
  */
 export const fetchAudioFilesWithMetadata = async () => {
   try {
+    console.log('🔄 Fetching audio files from database...');
     const { data, error } = await supabase
       .from('audio_files')
       .select('*')
       .order('frequency_min', { ascending: true });
 
     if (error) {
-      console.error('Error fetching audio files:', error);
+      console.error('❌ Error fetching audio files:', error);
       return [];
     }
 
+    console.log('✅ Fetched', (data || []).length, 'audio files:', (data || []).map(f => f.file_name));
     return data || [];
   } catch (err) {
-    console.error('Error in fetchAudioFilesWithMetadata:', err);
+    console.error('❌ Exception in fetchAudioFilesWithMetadata:', err);
     return [];
   }
 };

@@ -36,15 +36,17 @@ function App() {
       setSessionData(formData);
 
       // 1. Use intelligent audio matcher to select best frequency
+      console.log('📋 Step 1: Running audio matcher...');
       const frequency = await matchAudioFile(formData);
+      console.log('📋 Step 1 done: frequency =', frequency);
       setRecommendedFrequency(frequency);
 
       // Get the audio file from database
+      console.log('📋 Step 2: Getting audio file for frequency...');
       const audioFile = await getAudioFileForFrequency(frequency);
-      console.log('Selected audio file:', audioFile);
+      console.log('📋 Step 2 done: audioFile =', audioFile?.file_name || 'null');
 
       // 2. Save to Supabase
-      // First, check if client exists or create new
       const clientData = {
         firstName: formData.fullName.split(' ')[0] || '',
         surname: formData.fullName.split(' ').slice(1).join(' ') || '',
@@ -56,26 +58,26 @@ function App() {
 
       // Check if client exists
       let clientId;
+      console.log('📋 Step 3: Looking up client by email...');
       const existingClient = await getClientByEmail(clientData.email);
+      console.log('📋 Step 3 done: existingClient =', existingClient.success, existingClient.data?.id);
 
       if (existingClient.success && existingClient.data) {
-        // Client exists, use existing ID
         clientId = existingClient.data.id;
-        console.log('Existing client found:', clientId);
       } else {
-        // Client doesn't exist, create new
+        console.log('📋 Step 3b: Creating new client...');
         const clientResult = await saveClient(clientData);
+        console.log('📋 Step 3b done:', clientResult.success);
         if (clientResult.success) {
           clientId = clientResult.data.id;
-          console.log('New client created:', clientId);
         } else {
           console.error('Error saving client:', clientResult.error);
-          // For now, continue without saving
         }
       }
 
       // 3. Save session data
       if (clientId) {
+        console.log('📋 Step 4: Saving session...');
         const sessionDataForDb = {
           client_id: clientId,
           session_date: formData.todaysDate,
@@ -85,11 +87,11 @@ function App() {
           physical_energy: formData.painLevel,
           emotional_balance: formData.stressAnxietyLevel,
           mental_clarity: formData.sleepQuality,
-          spiritual_connection: 5, // Default to 5 (midpoint) - field not collected in new form
+          spiritual_connection: 5,
           selected_frequencies: [],
           health_concerns: formData.healthConcerns,
           medications: '',
-          vibration_intensity: 'moderate', // Must be 'gentle', 'moderate', or 'deep' per database constraint
+          vibration_intensity: 'moderate',
           emotional_indicators: [],
           intuitive_messages: '',
           consent_given: formData.consentGiven,
@@ -100,17 +102,15 @@ function App() {
         };
 
         const sessionResult = await saveSession(sessionDataForDb);
+        console.log('📋 Step 4 done:', sessionResult.success);
 
-        if (sessionResult.success) {
-          console.log('Session saved successfully:', sessionResult.data);
-
-          // 4. Emails will be sent when Complete Session button is clicked
-        } else {
+        if (!sessionResult.success) {
           console.error('Error saving session:', sessionResult.error);
         }
       }
 
       // 5. Show results
+      console.log('📋 Step 5: Navigating to results...');
       navigate('/results');
     } catch (error) {
       console.error('Error processing form:', error);
