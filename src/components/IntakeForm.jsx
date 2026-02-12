@@ -147,14 +147,20 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
   }, [bookingData]);
 
   const calculateProgress = () => {
-    const requiredFields = [
-      formData.fullName,
-      formData.email,
-      formData.phone,
-      formData.primaryGoals.length > 0,
-      formData.consentGiven,
-      formData.therapistSignature
-    ];
+    const requiredFields = walkInMode
+      ? [
+          formData.fullName,
+          formData.email,
+          formData.phone
+        ]
+      : [
+          formData.fullName,
+          formData.email,
+          formData.phone,
+          formData.primaryGoals.length > 0,
+          formData.consentGiven,
+          formData.therapistSignature
+        ];
 
     const filled = requiredFields.filter(Boolean).length;
     const percent = (filled / requiredFields.length) * 100;
@@ -283,29 +289,22 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
-    if (formData.primaryGoals.length === 0) {
-      alert('Please select at least one primary goal');
-      return;
-    }
-
-    // Walk-in mode: Check for contraindications
-    if (walkInMode) {
-      const hasContraindications = formData.healthConcerns.some(c => c !== 'none');
-      if (hasContraindications) {
-        alert('⚠️ Session cannot proceed due to contraindications. Please review the safety information.');
+    // Validation (skip primary goals, consent, and signature for walk-in mode)
+    if (!walkInMode) {
+      if (formData.primaryGoals.length === 0) {
+        alert('Please select at least one primary goal');
         return;
       }
-    }
 
-    if (!formData.consentGiven) {
-      alert('Please provide consent to continue');
-      return;
-    }
+      if (!formData.consentGiven) {
+        alert('Please provide consent to continue');
+        return;
+      }
 
-    if (!formData.therapistSignature) {
-      alert('Please provide therapist signature');
-      return;
+      if (!formData.therapistSignature) {
+        alert('Please provide therapist signature');
+        return;
+      }
     }
 
     // If this session came from a booking, mark it as completed
@@ -483,7 +482,8 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
           </section>
         )}
 
-        {/* Primary Goals */}
+        {/* Primary Goals (hidden in walk-in mode) */}
+        {!walkInMode && (
         <section className="form-card">
           <h3>2. Primary Goals</h3>
           <div className="chips">
@@ -507,10 +507,11 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
             ))}
           </div>
         </section>
+        )}
 
         {/* Symptom Snapshot */}
         <section className="form-card">
-          <h3>3. Symptom Snapshot (past 7 days)</h3>
+          <h3>{walkInMode ? '2' : '3'}. Symptom Snapshot (past 7 days)</h3>
           <div className="energy-grid">
             <div className="energy-row">
               <label>Pain Level</label>
@@ -705,19 +706,15 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
           </div>
         </section>
 
-        {/* Safety Screen */}
-        <section className="form-card" style={walkInMode ? {position: 'relative'} : {opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
-          {!walkInMode && (
+        {/* Safety Screen (hidden in walk-in mode) */}
+        {!walkInMode && (
+        <section className="form-card" style={{opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
             <div style={{position: 'absolute', top: '10px', right: '10px', background: '#e0e0e0', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#666'}}>
               Information Only
             </div>
-          )}
           <h3>4. Safety Screen</h3>
           <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
-            {walkInMode
-              ? 'Please select any contraindications that apply to this client.'
-              : 'This section is for reference. Contraindications are recorded at time of booking.'
-            }
+              This section is for reference. Contraindications are recorded at time of booking.
           </p>
           <div className="chips">
             {[
@@ -737,15 +734,8 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 <input
                   type="checkbox"
                   checked={formData.healthConcerns.includes(concern.value)}
-                  disabled={!walkInMode}
-                  onChange={(e) => {
-                    if (walkInMode) {
-                      const newConcerns = e.target.checked
-                        ? [...formData.healthConcerns, concern.value]
-                        : formData.healthConcerns.filter(c => c !== concern.value);
-                      setFormData({...formData, healthConcerns: newConcerns});
-                    }
-                  }}
+                  disabled
+                  onChange={() => {}}
                 />
                 <strong>{concern.label}</strong>
                 {concern.value !== 'none' && (
@@ -756,64 +746,11 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
               </label>
             ))}
           </div>
-
-          {/* Contraindication Warning */}
-          {walkInMode && formData.healthConcerns.some(c => c !== 'none') && (
-            <div style={{
-              marginTop: '16px',
-              padding: '16px',
-              background: '#fff3cd',
-              border: '2px solid #ffc107',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'start',
-              gap: '12px'
-            }}>
-              <span style={{fontSize: '24px', flexShrink: 0}}>⚠️</span>
-              <div>
-                <strong style={{color: '#856404', display: 'block', marginBottom: '8px'}}>
-                  Session Cannot Proceed
-                </strong>
-                <p style={{color: '#856404', margin: 0, fontSize: '14px', lineHeight: '1.6'}}>
-                  One or more contraindications have been identified. Vibroacoustic therapy is not suitable for clients with these conditions.
-                  <span
-                    style={{
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      marginLeft: '4px',
-                      fontWeight: '600'
-                    }}
-                    onClick={() => {
-                      const concernsText = formData.healthConcerns
-                        .filter(c => c !== 'none')
-                        .map(c => {
-                          const concern = [
-                            { value: 'pacemaker', label: 'Pacemakers/Implants' },
-                            { value: 'dvt', label: 'Deep Vein Thrombosis' },
-                            { value: 'bleeding', label: 'Bleeding Disorders' },
-                            { value: 'surgery', label: 'Recent Surgery/Open Wounds' },
-                            { value: 'hypotension', label: 'Severe Low Blood Pressure' },
-                            { value: 'epilepsy', label: 'Seizure Disorders' },
-                            { value: 'inflammatory', label: 'Acute Inflammatory Conditions' },
-                            { value: 'psychotic', label: 'Psychotic Conditions' },
-                            { value: 'pregnancy', label: 'Pregnancy' },
-                            { value: 'chemotherapy', label: 'Chemotherapy / Active Cancer Treatment' }
-                          ].find(item => item.value === c);
-                          return concern?.label || c;
-                        })
-                        .join('\n• ');
-                      alert(`Contraindications Identified:\n\n• ${concernsText}\n\nPlease click the "?" icon next to each condition for more information about why these are contraindications.`);
-                    }}
-                  >
-                    Click here for more info
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
         </section>
+        )}
 
-        {/* Consent & Acknowledgement */}
+        {/* Consent & Acknowledgement (hidden in walk-in mode) */}
+        {!walkInMode && (
         <section className="form-card">
           <h3>5. Consent & Acknowledgement</h3>
           <div className="consent-notice">
@@ -889,16 +826,12 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
             </div>
           </div>
         </section>
+        )}
 
         <div className="form-navigation">
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={walkInMode && formData.healthConcerns.some(c => c !== 'none')}
-            style={walkInMode && formData.healthConcerns.some(c => c !== 'none') ? {
-              opacity: 0.5,
-              cursor: 'not-allowed'
-            } : {}}
           >
             Submit Intake Form
           </button>
