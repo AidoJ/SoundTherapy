@@ -32,11 +32,22 @@ export const matchAudioFile = async (formData) => {
   console.log('📝 Form Data Received:', JSON.stringify(formData, null, 2));
 
   // Fetch all audio files from database
-  const audioFiles = await fetchAudioFilesWithMetadata();
+  const allAudioFiles = await fetchAudioFilesWithMetadata();
 
-  if (!audioFiles || audioFiles.length === 0) {
+  if (!allAudioFiles || allAudioFiles.length === 0) {
     console.error('❌ No audio files found in database');
     return 432; // Default fallback
+  }
+
+  // Filter out non-healing files (e.g. SessionEnd.mp3) — only score actual frequency files
+  const audioFiles = allAudioFiles.filter(audio => {
+    const name = (audio.file_name || '').toLowerCase();
+    return !name.includes('sessionend') && !name.includes('session_end');
+  });
+
+  if (audioFiles.length === 0) {
+    console.error('❌ No healing audio files found after filtering');
+    return 432;
   }
 
   // SIMPLE LOGIC: If session <= 30 minutes, pick a random demo file
@@ -395,7 +406,11 @@ export const getAudioFileForFrequency = async (frequency) => {
  * Get frequency metadata from database for display
  */
 export const getFrequencyMetadata = async (frequency) => {
-  const audioFiles = await fetchAudioFilesWithMetadata();
+  const allFiles = await fetchAudioFilesWithMetadata();
+  const audioFiles = allFiles.filter(audio => {
+    const name = (audio.file_name || '').toLowerCase();
+    return !name.includes('sessionend') && !name.includes('session_end');
+  });
 
   const matchingFile = audioFiles.find(
     audio => audio.frequency_min <= frequency && audio.frequency_max >= frequency
