@@ -33,26 +33,38 @@ export const fetchAudioFilesWithMetadata = async () => {
 };
 
 /**
- * Intelligent frequency matcher that dynamically uses audio file data from database
- * to select the most appropriate audio file
- * Returns: { frequency: number, audioFile: object } or just frequency (for backward compatibility)
+ * Intelligent frequency matcher that uses audio file data from database.
+ *
+ * DB audio files (actual data):
+ *   174 Hz (143-198) — Stress Relief, Pain/Tension, Sleep/Fatigue
+ *   285 Hz           — Energy Reset, Tissue Repair, Immune System
+ *   396 Hz           — Fear Release, Guilt Release, Grounding
+ *   417 Hz           — Emotional Release, Trauma Healing, Change Facilitation
+ *   432 Hz (426-438) — Stress Relief, Sleep/Fatigue, Energy Reset
+ *   528 Hz (487-542) — Energy Reset, Stress Relief, Heart Healing
+ *   639 Hz (598-690) — Emotional Release, Sleep/Fatigue, Heart Healing
+ *   741 Hz (691-759) — Clarity/Focus, Energy Reset, Purification
+ *   852 Hz           — Spiritual Realignment, Clarity/Focus, Intuition
+ *   963 Hz (927-1000)— Spiritual Realignment, Sleep/Fatigue, Deep Meditation
+ *   + 2 demos (185, 190) and SessionEnd (filtered out)
  */
 export const matchAudioFile = async (formData) => {
-  console.log('🎯 === AUDIO MATCHER DEBUG START ===');
-  console.log('📝 Form Data Received:', JSON.stringify(formData, null, 2));
+  console.log('🎯 === AUDIO MATCHER START ===');
+  console.log('📝 Form Data:', JSON.stringify(formData, null, 2));
 
-  // Fetch all audio files from database
   const allAudioFiles = await fetchAudioFilesWithMetadata();
 
   if (!allAudioFiles || allAudioFiles.length === 0) {
     console.error('❌ No audio files found in database');
-    return 432; // Default fallback
+    return 432;
   }
 
-  // Filter out non-healing files (e.g. SessionEnd.mp3) — only score actual frequency files
+  // Filter out SessionEnd and demo files — only score actual healing frequencies
   const audioFiles = allAudioFiles.filter(audio => {
     const name = (audio.file_name || '').toLowerCase();
-    return !name.includes('sessionend') && !name.includes('session_end');
+    return !name.includes('sessionend') &&
+           !name.includes('session_end') &&
+           !name.includes('demo');
   });
 
   if (audioFiles.length === 0) {
@@ -60,314 +72,217 @@ export const matchAudioFile = async (formData) => {
     return 432;
   }
 
-  // SIMPLE LOGIC: If session <= 30 minutes, pick a random demo file
-  const sessionDuration = formData.sessionDuration;
-  const sessionDurationNum = sessionDuration !== null && sessionDuration !== undefined 
-    ? Number(sessionDuration) 
-    : null;
-  
-  if (sessionDurationNum !== null && !isNaN(sessionDurationNum) && sessionDurationNum <= 30) {
-    console.log('⏱️ Short session (≤30 min) - using symptom scoring to select frequency');
-  }
+  console.log('🎵 Scoring', audioFiles.length, 'healing files');
 
-  // ELSE: Continue with normal matching process (original logic)
+  // Initialize scores
   const scores = {};
-
-  // Initialize scores for all audio files
   audioFiles.forEach(audio => {
-    const key = `${audio.frequency_min}-${audio.frequency_max}`;
+    const key = audio.id;
     scores[key] = {
       score: 0,
       audioFile: audio,
-      frequency: audio.frequency_min // Use min frequency as representative
+      frequency: audio.frequency_min
     };
   });
 
-  console.log('📊 Initial Scores:', JSON.stringify(scores, null, 2));
-
-  // 1. PRIMARY SCORING: Primary Goals (Highest weight: 15 points)
-  // Uses primaryGoals from new intake form
-  const goals = formData.primaryGoals || formData.intention || [];
-  if (goals && goals.length > 0) {
-    goals.forEach(goal => {
-      audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
-
-        // Check if primary_intentions array includes this goal
-        if (audio.primary_intentions && audio.primary_intentions.includes(goal)) {
-          scores[key].score += 15;
-        }
-
-        // Fuzzy matching for goals that might be worded differently
-        if (audio.primary_intentions) {
-          const lowerGoal = goal.toLowerCase();
-          const matchesIntent = audio.primary_intentions.some(intent =>
-            intent.toLowerCase().includes(lowerGoal) ||
-            lowerGoal.includes(intent.toLowerCase())
-          );
-          if (matchesIntent) {
-            scores[key].score += 12;
-          }
-        }
-
-        // Check harmonic connections for related support (5 points)
-        if (audio.harmonic_connections && Array.isArray(audio.harmonic_connections)) {
-          audio.harmonic_connections.forEach(relatedHz => {
-            const relatedAudio = audioFiles.find(a =>
-              a.frequency_min <= relatedHz && a.frequency_max >= relatedHz
-            );
-            if (relatedAudio && relatedAudio.primary_intentions) {
-              const matchesRelated = relatedAudio.primary_intentions.some(intent =>
-                intent.toLowerCase().includes(goal.toLowerCase()) ||
-                goal.toLowerCase().includes(intent.toLowerCase())
-              );
-              if (matchesRelated) {
-                scores[key].score += 5;
-              }
-            }
-          });
-        }
-      });
+  // Helper: check if any healing_properties match any keyword
+  const propsMatch = (audio, keywords) => {
+    if (!audio.healing_properties || !Array.isArray(audio.healing_properties)) return false;
+    return audio.healing_properties.some(prop => {
+      if (!prop) return false;
+      const lower = prop.toLowerCase();
+      return keywords.some(kw => lower.includes(kw));
     });
-  }
+  };
 
-  // 2. MANUAL FREQUENCY SELECTION (Weight: 10 points)
-  if (formData.selectedFrequencies && formData.selectedFrequencies.length > 0) {
-    formData.selectedFrequencies.forEach(selectedHz => {
-      audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
-        // Check if selected frequency is in this audio file's range
-        if (selectedHz >= audio.frequency_min && selectedHz <= audio.frequency_max) {
-          scores[key].score += 10;
-        }
-      });
+  // Helper: check if any primary_intentions match any keyword
+  const intentionsMatch = (audio, keywords) => {
+    if (!audio.primary_intentions || !Array.isArray(audio.primary_intentions)) return false;
+    return audio.primary_intentions.some(intent => {
+      if (!intent) return false;
+      const lower = intent.toLowerCase();
+      return keywords.some(kw => lower.includes(kw));
     });
-  }
+  };
 
-  // 3. EMOTIONAL INDICATORS (Weight: 6 points)
-  if (formData.emotionalIndicators && formData.emotionalIndicators.length > 0) {
-    formData.emotionalIndicators.forEach(indicator => {
-      audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
+  // --- SCORING ---
+  // Each frequency has a PRIMARY purpose. Score by giving the highest points
+  // only to the best-fit frequencies for each symptom, not all that loosely match.
+  //
+  // Frequency ownership:
+  //   174 Hz — PRIMARY: physical pain/tension
+  //   285 Hz — PRIMARY: tissue repair, immune, physical recovery
+  //   396 Hz — PRIMARY: fear, guilt, deep anxiety
+  //   417 Hz — PRIMARY: emotional trauma, emotional release
+  //   432 Hz — PRIMARY: general calm, mild stress (default/balanced)
+  //   528 Hz — PRIMARY: heart healing, love, energy/vitality
+  //   639 Hz — PRIMARY: relationships, empathy, emotional connection
+  //   741 Hz — PRIMARY: mental clarity, focus, detox
+  //   852 Hz — PRIMARY: intuition, spiritual clarity, awakening
+  //   963 Hz — PRIMARY: deep meditation, sleep, spiritual peace
 
-        if (audio.healing_properties && Array.isArray(audio.healing_properties)) {
-          const lowerIndicator = indicator.toLowerCase();
-          const matchesProperty = audio.healing_properties.some(prop =>
-            prop.toLowerCase().includes(lowerIndicator) ||
-            lowerIndicator.includes(prop.toLowerCase())
-          );
-
-          if (matchesProperty) {
-            scores[key].score += 6;
-          }
-        }
-      });
-    });
-  }
-
-  // 4. SYMPTOM LEVELS (Graduated scoring: 2/5/8 points based on severity)
-  const painLevel = formData.painLevel ?? formData.physicalEnergy ?? 0;
-  const stressLevel = formData.stressAnxietyLevel ?? formData.emotionalBalance ?? 0;
+  const painLevel = formData.painLevel ?? 0;
+  const stressLevel = formData.stressAnxietyLevel ?? 0;
   const sleepQuality = formData.sleepQuality ?? 5;
+  const mainPainAreas = formData.mainPainAreas || [];
+  const primaryGoals = formData.primaryGoals || [];
 
-  audioFiles.forEach(audio => {
-    const key = `${audio.frequency_min}-${audio.frequency_max}`;
+  // Helper: add points to file matching a freq range
+  const addByFreq = (minHz, maxHz, pts) => {
+    audioFiles.forEach(audio => {
+      if (audio.frequency_min >= minHz && audio.frequency_min <= maxHz) {
+        scores[audio.id].score += pts;
+      }
+    });
+  };
 
-    if (!audio.healing_properties) return;
+  // 1. PAIN — high pain → 174 (primary), 285 (secondary)
+  if (painLevel >= 1) {
+    const pts = painLevel >= 7 ? 12 : painLevel >= 4 ? 7 : 3;
+    addByFreq(143, 198, pts);       // 174 Hz — Pain/Tension (primary)
+    addByFreq(285, 285, pts - 2);   // 285 Hz — Tissue Repair (secondary)
+    addByFreq(426, 438, 2);         // 432 Hz — mild general support
+  }
 
-    // Pain: graduated scoring (1-3 = +2, 4-6 = +5, 7-10 = +8)
-    if (painLevel >= 1) {
-      const painScore = painLevel >= 7 ? 8 : painLevel >= 4 ? 5 : 2;
-      const hasRelevantProperty = audio.healing_properties.some(prop =>
-        prop.toLowerCase().includes('pain') ||
-        prop.toLowerCase().includes('inflammation') ||
-        prop.toLowerCase().includes('relief') ||
-        prop.toLowerCase().includes('tension')
-      );
-      if (hasRelevantProperty) scores[key].score += painScore;
-    }
+  // 2. STRESS/ANXIETY — high stress → 396, 417 (primary), 432, 528 (secondary)
+  if (stressLevel >= 1) {
+    const pts = stressLevel >= 7 ? 12 : stressLevel >= 4 ? 7 : 3;
+    addByFreq(396, 396, pts);       // 396 Hz — Fear/Guilt Release (primary)
+    addByFreq(417, 417, pts);       // 417 Hz — Emotional/Trauma (primary)
+    addByFreq(487, 542, pts - 2);   // 528 Hz — Stress Relief (secondary)
+    addByFreq(426, 438, pts - 3);   // 432 Hz — General calm (secondary)
+    addByFreq(598, 690, pts - 4);   // 639 Hz — Emotional connection
+  }
 
-    // Stress: graduated scoring (1-3 = +2, 4-6 = +5, 7-10 = +8)
-    if (stressLevel >= 1) {
-      const stressScore = stressLevel >= 7 ? 8 : stressLevel >= 4 ? 5 : 2;
-      const hasRelevantProperty = audio.healing_properties.some(prop =>
-        prop.toLowerCase().includes('stress') ||
-        prop.toLowerCase().includes('anxiety') ||
-        prop.toLowerCase().includes('calm') ||
-        prop.toLowerCase().includes('emotional') ||
-        prop.toLowerCase().includes('harmony')
-      );
-      if (hasRelevantProperty) scores[key].score += stressScore;
-    }
+  // 3. SLEEP — poor sleep → 963 (primary), 639 (secondary), 432 (mild)
+  if (sleepQuality <= 4) {
+    const pts = sleepQuality <= 1 ? 12 : sleepQuality <= 2 ? 8 : sleepQuality <= 3 ? 5 : 2;
+    addByFreq(927, 1000, pts);      // 963 Hz — Deep Meditation/Sleep (primary)
+    addByFreq(598, 690, pts - 2);   // 639 Hz — Sleep/Fatigue (secondary)
+    addByFreq(852, 852, pts - 3);   // 852 Hz — Spiritual calm
+    addByFreq(426, 438, 2);         // 432 Hz — mild general support
+  }
 
-    // Sleep: graduated scoring (quality 3 = +2, quality 2 = +5, quality 1 = +8)
-    if (sleepQuality <= 3) {
-      const sleepScore = sleepQuality <= 1 ? 8 : sleepQuality <= 2 ? 5 : 2;
-      const hasRelevantProperty = audio.healing_properties.some(prop =>
-        prop.toLowerCase().includes('sleep') ||
-        prop.toLowerCase().includes('insomnia') ||
-        prop.toLowerCase().includes('relaxation') ||
-        prop.toLowerCase().includes('fatigue')
-      );
-      if (hasRelevantProperty) scores[key].score += sleepScore;
-    }
-  });
+  // 4. MAIN PAIN AREAS (walk-in form chips)
+  if (mainPainAreas.length > 0) {
+    const w = primaryGoals.length > 0 ? 6 : 10;
 
-  // 5. MAIN PAIN AREAS (Weight: 10 points when no primaryGoals, else 6 points)
-  const hasPrimaryGoals = (formData.primaryGoals && formData.primaryGoals.length > 0) ||
-                          (formData.intention && formData.intention.length > 0);
-  const painAreaWeight = hasPrimaryGoals ? 6 : 10;
+    mainPainAreas.forEach(area => {
+      const lower = area.toLowerCase();
 
-  if (formData.mainPainAreas && formData.mainPainAreas.length > 0) {
-    formData.mainPainAreas.forEach(area => {
+      if (lower.includes('fibromyalgia') || lower.includes('widespread')) {
+        addByFreq(143, 198, w + 4); // 174 Hz — strong preference
+        addByFreq(285, 285, w);     // 285 Hz — tissue/immune
+      } else if (lower.includes('headache') || lower.includes('migraine')) {
+        addByFreq(691, 759, w + 2); // 741 Hz — Clarity/Purification (best for head)
+        addByFreq(143, 198, w);     // 174 Hz — Pain/Tension
+      } else if (lower.includes('back') || lower.includes('neck') || lower.includes('shoulder') || lower.includes('joint')) {
+        addByFreq(143, 198, w);     // 174 Hz — Pain/Tension
+        addByFreq(285, 285, w);     // 285 Hz — Tissue Repair
+      } else if (lower.includes('chest') || lower.includes('heart')) {
+        addByFreq(487, 542, w + 2); // 528 Hz — Heart Healing
+        addByFreq(598, 690, w);     // 639 Hz — Emotional/Heart
+      } else if (lower.includes('anxiety') || lower.includes('emotional')) {
+        addByFreq(396, 396, w);     // 396 Hz — Fear/Guilt
+        addByFreq(417, 417, w);     // 417 Hz — Emotional Release
+      } else if (lower.includes('stomach') || lower.includes('digestion')) {
+        addByFreq(487, 542, w);     // 528 Hz — Energy Reset
+        addByFreq(691, 759, w);     // 741 Hz — Purification
+      } else {
+        // General pain area — mild boost to pain frequencies
+        addByFreq(143, 198, Math.round(w / 2));
+        addByFreq(285, 285, Math.round(w / 2));
+      }
+    });
+  }
+
+  // 5. PRIMARY GOALS (from full intake form)
+  if (primaryGoals.length > 0) {
+    primaryGoals.forEach(goal => {
+      const lower = goal.toLowerCase();
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
-
-        if (!audio.healing_properties) return;
-
-        const lowerArea = area.toLowerCase();
-
-        // Special case: Fibromyalgia -> 174 Hz
-        if (lowerArea.includes('fibromyalgia') || lowerArea.includes('widespread')) {
-          if (audio.frequency_min <= 174 && audio.frequency_max >= 174) {
-            scores[key].score += 10; // Strong preference for 174 Hz
-          }
+        if (intentionsMatch(audio, [lower])) {
+          scores[audio.id].score += 15;
         }
-
-        // Match pain area keywords
-        const matchesProperty = audio.healing_properties.some(prop =>
-          prop.toLowerCase().includes(lowerArea) ||
-          prop.toLowerCase().includes('pain') ||
-          (lowerArea.includes('headache') && prop.toLowerCase().includes('migraine'))
-        );
-
-        if (matchesProperty) {
-          scores[key].score += painAreaWeight;
+        if (propsMatch(audio, [lower])) {
+          scores[audio.id].score += 10;
         }
       });
     });
   }
 
-  // 6. HEALTH CONCERNS / SAFETY SCREEN (Weight: 4 points)
+  // 6. HEALTH CONCERNS
   if (formData.healthConcerns && formData.healthConcerns.length > 0) {
     formData.healthConcerns.forEach(concern => {
-      // Skip 'none' - it's not a real concern
       if (concern === 'none') return;
-
+      const lower = concern.toLowerCase();
       audioFiles.forEach(audio => {
-        const key = `${audio.frequency_min}-${audio.frequency_max}`;
-
-        if (!audio.healing_properties) return;
-
-        const lowerConcern = concern.toLowerCase();
-        const matchesProperty = audio.healing_properties.some(prop =>
-          prop.toLowerCase().includes(lowerConcern) ||
-          lowerConcern.includes(prop.toLowerCase())
-        );
-
-        if (matchesProperty) {
-          scores[key].score += 4;
+        if (propsMatch(audio, [lower]) || intentionsMatch(audio, [lower])) {
+          scores[audio.id].score += 4;
         }
       });
     });
   }
 
-  // Find the highest scoring audio file(s)
+  // --- FIND WINNER ---
+
+  const scoreSummary = audioFiles.map(audio => ({
+    file: audio.file_name,
+    freq: audio.frequency_min,
+    score: scores[audio.id].score
+  }));
+  console.log('📊 Scores:', JSON.stringify(scoreSummary, null, 2));
+
   let maxScore = 0;
   let topMatches = [];
 
-  console.log('📊 Scoring results:', Object.entries(scores).map(([key, data]) => ({
-    key,
-    fileName: data.audioFile?.file_name,
-    score: data.score,
-    frequency: data.frequency
-  })));
-
-  Object.entries(scores).forEach(([key, data]) => {
-    if (data.score > maxScore) {
-      maxScore = data.score;
-      topMatches = [data]; // New highest score - reset array with this match
-    } else if (data.score === maxScore && data.score > 0) {
-      topMatches.push(data); // Same score - add to candidates
+  Object.values(scores).forEach(entry => {
+    if (entry.score > maxScore) {
+      maxScore = entry.score;
+      topMatches = [entry];
+    } else if (entry.score === maxScore && entry.score > 0) {
+      topMatches.push(entry);
     }
   });
 
-  // Randomly select from top matches if multiple files have same score
-  let selectedMatch = null;
   if (topMatches.length > 0) {
-    const randomIndex = Math.floor(Math.random() * topMatches.length);
-    selectedMatch = topMatches[randomIndex];
+    const pick = topMatches[Math.floor(Math.random() * topMatches.length)];
+    console.log('✅ Selected:', pick.audioFile.file_name, 'score:', pick.score);
+    matchAudioFile.selectedAudioFile = pick.audioFile;
+    return pick.frequency;
   }
 
-  const recommendedFrequency = selectedMatch?.frequency || null;
-  const selectedAudioFile = selectedMatch?.audioFile || null;
-
-  console.log('🎯 Selection process:', {
-    topMatchesCount: topMatches.length,
-    maxScore,
-    selectedMatch: selectedMatch ? {
-      fileName: selectedMatch.audioFile?.file_name,
-      frequency: selectedMatch.frequency,
-      score: selectedMatch.score
-    } : null
-  });
-
-  // FALLBACK SYSTEM:
-  // 1. If we found a match (score > 0), use it
-  if (maxScore > 0 && recommendedFrequency) {
-    console.log('✅ Matched Frequency:', recommendedFrequency, 'with score:', maxScore);
-    console.log('Selected Audio File:', selectedAudioFile?.file_name);
-    
-    // Store the selected audio file for later retrieval
-    if (selectedAudioFile) {
-      matchAudioFile.selectedAudioFile = selectedAudioFile;
-    }
-    
-    return recommendedFrequency;
-  }
-
-  // 2. Try 432 Hz (Universal Balance) as default fallback
+  // Fallback: 432 Hz
   const fallback432 = audioFiles.find(
     audio => audio.frequency_min <= 432 && audio.frequency_max >= 432
   );
 
   if (fallback432) {
-    console.log('⚠️ No match found - Using fallback: 432 Hz (Earth Resonance)');
+    console.log('⚠️ No match — fallback 432 Hz');
     matchAudioFile.selectedAudioFile = fallback432;
-    return 432;
+    return fallback432.frequency_min;
   }
 
-  // 3. Use the first available audio file in database
-  if (audioFiles.length > 0) {
-    const firstAvailable = audioFiles[0];
-    console.log('⚠️ No 432 Hz available - Using first available audio file:', firstAvailable.file_name);
-    matchAudioFile.selectedAudioFile = firstAvailable;
-    return firstAvailable.frequency_min;
-  }
-
-  // 4. Last resort - return 432 Hz even if file doesn't exist (will show error to user)
-  console.error('❌ No audio files available in database!');
-  matchAudioFile.selectedAudioFile = null;
-  return 432;
+  // Last resort: first available file
+  const first = audioFiles[0];
+  console.log('⚠️ Using first available:', first.file_name);
+  matchAudioFile.selectedAudioFile = first;
+  return first.frequency_min;
 };
 
 /**
  * Get audio file URL from Supabase based on frequency
- * If matchAudioFile was called first, it will use the pre-selected audio file
  */
 export const getAudioFileForFrequency = async (frequency) => {
   try {
     console.log('🔍 Looking for audio file for frequency:', frequency);
-    
-    // Check if matchAudioFile already selected a specific file
-    // This is important for short sessions where we want demo files only
+
+    // Use pre-selected file if available
     if (matchAudioFile.selectedAudioFile) {
-      console.log('✅ Using pre-selected audio file from matchAudioFile:', matchAudioFile.selectedAudioFile.file_name);
-      // DON'T clear it - AudioPlayer may call this multiple times
+      console.log('✅ Using pre-selected:', matchAudioFile.selectedAudioFile.file_name);
       return matchAudioFile.selectedAudioFile;
     }
 
-    // Query audio_files table for matching frequency with timeout
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Query timed out')), 8000)
     );
@@ -380,8 +295,6 @@ export const getAudioFileForFrequency = async (frequency) => {
 
     const { data, error } = await Promise.race([query, timeout]);
 
-    console.log('Query result:', { data, error });
-
     if (error) {
       console.error('Error fetching audio file:', error);
       return null;
@@ -392,22 +305,10 @@ export const getAudioFileForFrequency = async (frequency) => {
       return null;
     }
 
-    // If multiple matches, prefer demo files (for frequencies 185 or 190 which are demo files)
-    if (data.length > 1 && (frequency === 185 || frequency === 190)) {
-      const demoFile = data.find(file => {
-        const fileName = (file.file_name || '').toLowerCase();
-        const fileUrl = (file.file_url || '').toLowerCase();
-        return fileName.includes('demo') || fileUrl.includes('demo');
-      });
-      if (demoFile) {
-        console.log('✅ Found demo file for frequency:', demoFile.file_name);
-        return demoFile;
-      }
-    }
-
-    // If multiple matches, return the first one
-    const selectedFile = Array.isArray(data) ? data[0] : data;
-    console.log('Selected audio file:', selectedFile);
+    // Filter out SessionEnd if it matches the range
+    const healing = data.filter(f => !(f.file_name || '').toLowerCase().includes('sessionend'));
+    const selectedFile = healing.length > 0 ? healing[0] : data[0];
+    console.log('Selected audio file:', selectedFile.file_name);
     return selectedFile;
   } catch (err) {
     console.error('Error in getAudioFileForFrequency:', err);
@@ -419,7 +320,7 @@ export const getAudioFileForFrequency = async (frequency) => {
  * Get frequency metadata from database for display
  */
 export const getFrequencyMetadata = async (frequency) => {
-  const allFiles = await fetchAudioFilesWithMetadata(); // already has timeout
+  const allFiles = await fetchAudioFilesWithMetadata();
   const audioFiles = allFiles.filter(audio => {
     const name = (audio.file_name || '').toLowerCase();
     return !name.includes('sessionend') && !name.includes('session_end');
@@ -452,14 +353,11 @@ export const getFrequencyMetadata = async (frequency) => {
 
 /**
  * Find the closest Solfeggio frequency from the frequencies table
- * @param {number} algorithmFrequency - The frequency returned by the algorithm
- * @returns {object} - Closest Solfeggio frequency with name, description, etc.
  */
 export const getClosestSolfeggioFrequency = async (algorithmFrequency) => {
   try {
     console.log('🔍 Finding closest Solfeggio frequency for:', algorithmFrequency);
 
-    // Fetch all Solfeggio frequencies from the frequencies table
     const { data: frequencies, error } = await supabase
       .from('frequencies')
       .select('*')
@@ -475,7 +373,6 @@ export const getClosestSolfeggioFrequency = async (algorithmFrequency) => {
       return null;
     }
 
-    // Find the closest frequency
     let closestFreq = frequencies[0];
     let minDifference = Math.abs(frequencies[0].frequency_hz - algorithmFrequency);
 
