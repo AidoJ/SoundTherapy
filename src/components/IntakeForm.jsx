@@ -149,7 +149,8 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
   const calculateProgress = () => {
     const requiredFields = walkInMode
       ? [
-          formData.fullName
+          formData.fullName,
+          formData.email
         ]
       : [
           formData.fullName,
@@ -393,8 +394,8 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
             </div>
             )}
           </div>
-          {!walkInMode && (
           <div className="form-grid cols-2">
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="phone">Phone *</label>
               <input
@@ -406,6 +407,7 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
                 required
               />
             </div>
+            )}
             <div className="form-group">
               <label htmlFor="email">Email *</label>
               <input
@@ -418,7 +420,6 @@ const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
               />
             </div>
           </div>
-          )}
           <div className="form-grid cols-2">
             <div className="form-group">
               <label htmlFor="todaysDate">Today's Date</label>
