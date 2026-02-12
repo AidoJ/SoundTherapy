@@ -6,10 +6,18 @@ import { supabase } from './supabaseClient';
 export const fetchAudioFilesWithMetadata = async () => {
   try {
     console.log('🔄 Fetching audio files from database...');
-    const { data, error } = await supabase
+
+    // Timeout after 8 seconds so the app never hangs
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase query timed out after 8s')), 8000)
+    );
+
+    const query = supabase
       .from('audio_files')
       .select('*')
       .order('frequency_min', { ascending: true });
+
+    const { data, error } = await Promise.race([query, timeout]);
 
     if (error) {
       console.error('❌ Error fetching audio files:', error);
