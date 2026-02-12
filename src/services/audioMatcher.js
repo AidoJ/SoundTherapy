@@ -367,15 +367,18 @@ export const getAudioFileForFrequency = async (frequency) => {
       return matchAudioFile.selectedAudioFile;
     }
 
-    // Query audio_files table for matching frequency
-    // We want: frequency_min <= frequency <= frequency_max
-    let query = supabase
+    // Query audio_files table for matching frequency with timeout
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Query timed out')), 8000)
+    );
+
+    const query = supabase
       .from('audio_files')
       .select('*')
-      .lte('frequency_min', frequency)  // frequency_min <= target
-      .gte('frequency_max', frequency); // frequency_max >= target
+      .lte('frequency_min', frequency)
+      .gte('frequency_max', frequency);
 
-    const { data, error } = await query;
+    const { data, error } = await Promise.race([query, timeout]);
 
     console.log('Query result:', { data, error });
 
@@ -416,7 +419,7 @@ export const getAudioFileForFrequency = async (frequency) => {
  * Get frequency metadata from database for display
  */
 export const getFrequencyMetadata = async (frequency) => {
-  const allFiles = await fetchAudioFilesWithMetadata();
+  const allFiles = await fetchAudioFilesWithMetadata(); // already has timeout
   const audioFiles = allFiles.filter(audio => {
     const name = (audio.file_name || '').toLowerCase();
     return !name.includes('sessionend') && !name.includes('session_end');
