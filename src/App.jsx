@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import WelcomeScreen from './components/WelcomeScreen';
-import QuickBookingForm from './components/QuickBookingForm';
+import BookingForm from './components/BookingForm';
+import BookingSuccess from './components/BookingSuccess';
+import BookingsList from './components/BookingsList';
 import IntakeForm from './components/IntakeForm';
 import ResultsScreen from './components/ResultsScreen';
 import { matchAudioFile, getAudioFileForFrequency } from './services/audioMatcher';
@@ -8,26 +11,21 @@ import { saveClient, saveSession, getClientByEmail } from './services/supabaseCl
 // Email sending is now handled in ResultsScreen when Complete Session is clicked
 import './App.css';
 
+// Main App component
 function App() {
-  const [screen, setScreen] = useState('welcome'); // 'welcome', 'booking', 'form', 'results'
   const [recommendedFrequency, setRecommendedFrequency] = useState(null);
   const [sessionData, setSessionData] = useState(null);
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleStart = () => {
-    setScreen('booking');
+    navigate('/booking');
   };
 
   const handleBookingComplete = (booking) => {
     setBookingData(booking);
-    // For now, go directly to form. Later we'll add booking management
-    setScreen('form');
-  };
-
-  const handleRequireFullIntake = (healthData) => {
-    // If contraindications found, go directly to full intake form
-    setScreen('form');
+    navigate('/booking-success');
   };
 
   const handleFormSubmit = async (formData) => {
@@ -38,82 +36,82 @@ function App() {
       setSessionData(formData);
 
       // 1. Use intelligent audio matcher to select best frequency
+      console.log('📋 Step 1: Running audio matcher...');
       const frequency = await matchAudioFile(formData);
+      console.log('📋 Step 1 done: frequency =', frequency);
       setRecommendedFrequency(frequency);
 
       // Get the audio file from database
+      console.log('📋 Step 2: Getting audio file for frequency...');
       const audioFile = await getAudioFileForFrequency(frequency);
-      console.log('Selected audio file:', audioFile);
+      console.log('📋 Step 2 done: audioFile =', audioFile?.file_name || 'null');
 
       // 2. Save to Supabase
-      // First, check if client exists or create new
       const clientData = {
-        firstName: formData.firstName,
-        surname: formData.surname,
+        firstName: formData.fullName.split(' ')[0] || '',
+        surname: formData.fullName.split(' ').slice(1).join(' ') || '',
         email: formData.email,
         phone: formData.phone,
         dateOfBirth: formData.dateOfBirth || null,
-        gender: formData.gender || null
+        gender: null
       };
 
       // Check if client exists
       let clientId;
+      console.log('📋 Step 3: Looking up client by email...');
       const existingClient = await getClientByEmail(clientData.email);
+      console.log('📋 Step 3 done: existingClient =', existingClient.success, existingClient.data?.id);
 
       if (existingClient.success && existingClient.data) {
-        // Client exists, use existing ID
         clientId = existingClient.data.id;
-        console.log('Existing client found:', clientId);
       } else {
-        // Client doesn't exist, create new
+        console.log('📋 Step 3b: Creating new client...');
         const clientResult = await saveClient(clientData);
+        console.log('📋 Step 3b done:', clientResult.success);
         if (clientResult.success) {
           clientId = clientResult.data.id;
-          console.log('New client created:', clientId);
         } else {
           console.error('Error saving client:', clientResult.error);
-          // For now, continue without saving
         }
       }
 
       // 3. Save session data
       if (clientId) {
-        const sessionData = {
+        console.log('📋 Step 4: Saving session...');
+        const sessionDataForDb = {
           client_id: clientId,
-          session_date: formData.date,
-          session_time: formData.time,
-          intention: formData.intention,
-          goal_description: formData.goalDescription,
-          physical_energy: formData.physicalEnergy,
-          emotional_balance: formData.emotionalBalance,
-          mental_clarity: formData.mentalClarity,
-          spiritual_connection: formData.spiritualConnection,
-          selected_frequencies: formData.selectedFrequencies,
+          session_date: formData.todaysDate,
+          session_time: new Date().toLocaleTimeString(),
+          intention: formData.primaryGoals.join(', '),
+          goal_description: formData.primaryGoals.join(', '),
+          physical_energy: formData.painLevel,
+          emotional_balance: formData.stressAnxietyLevel,
+          mental_clarity: formData.sleepQuality,
+          spiritual_connection: 5,
+          selected_frequencies: [],
           health_concerns: formData.healthConcerns,
-          medications: formData.medications,
-          vibration_intensity: formData.vibrationIntensity,
-          emotional_indicators: formData.emotionalIndicators,
-          intuitive_messages: formData.intuitiveMessages,
+          medications: '',
+          vibration_intensity: 'moderate',
+          emotional_indicators: [],
+          intuitive_messages: '',
           consent_given: formData.consentGiven,
-          signature: formData.signature,
+          signature: formData.therapistSignature,
           signature_date: formData.signatureDate,
           frequency_suggested: frequency,
           status: 'scheduled'
         };
 
-        const sessionResult = await saveSession(sessionData);
+        const sessionResult = await saveSession(sessionDataForDb);
+        console.log('📋 Step 4 done:', sessionResult.success);
 
-        if (sessionResult.success) {
-          console.log('Session saved successfully:', sessionResult.data);
-
-          // 4. Emails will be sent when Complete Session button is clicked
-        } else {
+        if (!sessionResult.success) {
           console.error('Error saving session:', sessionResult.error);
         }
       }
 
       // 5. Show results
-      setScreen('results');
+      console.log('📋 Step 5: Navigating to results...');
+      navigate('/results');
     } catch (error) {
       console.error('Error processing form:', error);
       alert('An error occurred. Please try again.');
@@ -123,7 +121,7 @@ function App() {
   };
 
   const handleReset = () => {
-    setScreen('welcome');
+    navigate('/');
     setRecommendedFrequency(null);
     setSessionData(null);
     setBookingData(null);
@@ -132,32 +130,55 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        {screen === 'welcome' && <WelcomeScreen onStart={handleStart} />}
+        {loading && <div className="loading-overlay">Processing...</div>}
 
-        {screen === 'booking' && (
-          <QuickBookingForm 
-            onBookingComplete={handleBookingComplete}
-            onRequireFullIntake={handleRequireFullIntake}
+        <Routes>
+          {/* Home / Welcome Screen */}
+          <Route path="/" element={<WelcomeScreen onStart={handleStart} />} />
+
+          {/* Market Booking Form */}
+          <Route
+            path="/booking"
+            element={<BookingForm onBookingComplete={handleBookingComplete} />}
           />
-        )}
 
-        {screen === 'form' && (
-          <>
-            {loading && <div className="loading-overlay">Processing...</div>}
-            <IntakeForm 
-              onSubmit={handleFormSubmit}
-              bookingData={bookingData}
-            />
-          </>
-        )}
+          {/* Booking Success Page */}
+          <Route path="/booking-success" element={<BookingSuccess />} />
 
-        {screen === 'results' && recommendedFrequency && sessionData && (
-          <ResultsScreen
-            frequency={recommendedFrequency}
-            sessionData={sessionData}
-            onReset={handleReset}
+          {/* Practitioner Bookings Dashboard */}
+          <Route path="/bookings" element={<BookingsList />} />
+
+          {/* Intake Form (accepts ?bookingId parameter) */}
+          <Route
+            path="/intake"
+            element={<IntakeForm onSubmit={handleFormSubmit} bookingData={bookingData} />}
           />
-        )}
+
+          {/* Walk-In Session (no booking required) */}
+          <Route
+            path="/walk-in"
+            element={<IntakeForm onSubmit={handleFormSubmit} walkInMode={true} />}
+          />
+
+          {/* Results Screen */}
+          <Route
+            path="/results"
+            element={
+              recommendedFrequency && sessionData ? (
+                <ResultsScreen
+                  frequency={recommendedFrequency}
+                  sessionData={sessionData}
+                  onReset={handleReset}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
     </div>
   );

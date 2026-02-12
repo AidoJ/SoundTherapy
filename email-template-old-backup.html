@@ -14,8 +14,8 @@
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #007e8c 0%, #00a8ba 100%); padding: 40px 30px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">🎵 Vibroacoustic Therapy Session Summary</h1>
-                            <p style="margin: 10px 0 0 0; color: #e0f7fa; font-size: 16px;">Your Personalized Healing Experience</p>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">🎵 Sound Healing Session Summary</h1>
+                            <p style="margin: 10px 0 0 0; color: #e0f7fa; font-size: 16px;">Your Personalized Frequency Experience</p>
                         </td>
                     </tr>
 
@@ -23,36 +23,23 @@
                     <tr>
                         <td style="padding: 30px 30px 20px 30px;">
                             <p style="margin: 0; font-size: 16px; color: #333333; line-height: 1.6;">
-                                Dear <strong>{{client_name}}</strong>,
+                                Dear <strong>{{to_name}}</strong>,
                             </p>
                             <p style="margin: 15px 0 0 0; font-size: 16px; color: #666666; line-height: 1.6;">
-                                Thank you for your vibroacoustic therapy session on <strong>{{session_date}}</strong>. Below is a comprehensive summary of your personalized healing experience.
+                                Thank you for your vibroacoustic therapy session on <strong>{{session_date}}</strong> at <strong>{{session_time}}</strong>. Below is a comprehensive summary of your healing session.
                             </p>
                         </td>
                     </tr>
 
-                    <!-- Your Healing Frequency Card -->
+                    <!-- Frequency Information Card -->
                     <tr>
                         <td style="padding: 0 30px 20px 30px;">
                             <div style="background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); border-left: 4px solid #007e8c; padding: 25px; border-radius: 8px;">
-                                <h2 style="margin: 0 0 15px 0; color: #007e8c; font-size: 22px;">Your Personalized Frequency</h2>
-                                <p style="margin: 0 0 10px 0; font-size: 32px; font-weight: 700; color: #007e8c;">{{frequency_hz}} Hz</p>
+                                <h2 style="margin: 0 0 15px 0; color: #007e8c; font-size: 22px;">Your Healing Frequency</h2>
+                                <p style="margin: 0 0 10px 0; font-size: 32px; font-weight: 700; color: #007e8c;">{{frequency_hz}}</p>
                                 <p style="margin: 0 0 5px 0; font-size: 18px; color: #00695c; font-weight: 600;">{{frequency_name}}</p>
                                 <p style="margin: 0; font-size: 14px; color: #00897b;">
                                     <strong>Family:</strong> {{frequency_family}}
-                                </p>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- NEW: Solfeggio Frequency Description -->
-                    <tr>
-                        <td style="padding: 0 30px 20px 30px;">
-                            <div style="background-color: #f0f8f9; border-left: 4px solid #9b7fc4; padding: 20px; border-radius: 8px;">
-                                <h3 style="margin: 0 0 12px 0; color: #7e5ba6; font-size: 18px;">✨ Sacred Solfeggio Frequency</h3>
-                                <p style="margin: 0 0 8px 0; font-size: 16px; color: #7e5ba6; font-weight: 600;">{{solfeggio_hz}} Hz - {{solfeggio_name}}</p>
-                                <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7;">
-                                    {{solfeggio_description}}
                                 </p>
                             </div>
                         </td>
@@ -81,52 +68,73 @@
                     <!-- Your Session Goals -->
                     <tr>
                         <td style="padding: 0 30px 20px 30px;">
-                            <h3 style="margin: 0 0 12px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Your Session Goals</h3>
+                            <h3 style="margin: 0 0 12px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Your Session Intentions</h3>
                             <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7;">
-                                {{primary_goals}}
+                                <strong>Focus Areas:</strong> {{client_intentions}}
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-size: 15px; color: #666666; line-height: 1.7;">
+                                <strong>Session Goal:</strong> {{goal_description}}
                             </p>
                         </td>
                     </tr>
 
-                    <!-- NEW: Symptom Snapshot (Pre-Session) -->
+                    <!-- Energy Profile (Pre-Session) -->
                     <tr>
                         <td style="padding: 0 30px 20px 30px;">
-                            <h3 style="margin: 0 0 15px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Pre-Session Assessment (Past 7 Days)</h3>
+                            <h3 style="margin: 0 0 15px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Pre-Session Energy Profile</h3>
                             <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; font-size: 15px; color: #666666;">
-                                        <strong>Pain Level:</strong>
+                                        <strong>Physical Energy:</strong>
                                     </td>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; text-align: right; font-size: 15px; color: #007e8c; font-weight: 600;">
-                                        {{pain_level}}/10
+                                        {{physical_energy}}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; font-size: 15px; color: #666666;">
-                                        <strong>Stress/Anxiety Level:</strong>
+                                        <strong>Emotional Balance:</strong>
                                     </td>
                                     <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; text-align: right; font-size: 15px; color: #007e8c; font-weight: 600;">
-                                        {{stress_anxiety_level}}/10
+                                        {{emotional_balance}}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; font-size: 15px; color: #666666;">
+                                        <strong>Mental Clarity:</strong>
+                                    </td>
+                                    <td style="padding: 8px 0; border-bottom: 1px solid #e0e0e0; text-align: right; font-size: 15px; color: #007e8c; font-weight: 600;">
+                                        {{mental_clarity}}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 8px 0; font-size: 15px; color: #666666;">
-                                        <strong>Sleep Quality:</strong>
+                                        <strong>Spiritual Connection:</strong>
                                     </td>
                                     <td style="padding: 8px 0; text-align: right; font-size: 15px; color: #007e8c; font-weight: 600;">
-                                        {{sleep_quality}}/5
+                                        {{spiritual_connection}}
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
 
-                    <!-- NEW: Main Pain Areas (if applicable) -->
+                    <!-- Emotional Indicators -->
                     <tr>
                         <td style="padding: 0 30px 20px 30px;">
-                            <h3 style="margin: 0 0 12px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Pain/Discomfort Areas</h3>
+                            <h3 style="margin: 0 0 12px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Emotional Themes Addressed</h3>
                             <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7;">
-                                {{main_pain_areas}}
+                                {{emotional_indicators}}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Intuitive Messages -->
+                    <tr>
+                        <td style="padding: 0 30px 20px 30px;">
+                            <h3 style="margin: 0 0 12px 0; color: #007e8c; font-size: 18px; border-bottom: 2px solid #007e8c; padding-bottom: 8px;">Your Intuitive Messages</h3>
+                            <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7; font-style: italic;">
+                                "{{intuitive_messages}}"
                             </p>
                         </td>
                     </tr>
@@ -163,13 +171,21 @@
                             <div style="background: linear-gradient(135deg, #f0f8f9 0%, #e0f2f4 100%); border-left: 4px solid #007e8c; padding: 30px; border-radius: 8px;">
                                 <h3 style="margin: 0 0 15px 0; color: #007e8c; font-size: 20px; font-weight: 600;">Continue Your Healing Journey</h3>
                                 <p style="margin: 0 0 15px 0; font-size: 15px; color: #666666; line-height: 1.7;">
-                                    Vibroacoustic therapy works cumulatively—each session builds upon the last, deepening your body's capacity for balance and renewal. Regular sessions help anchor the healing frequencies into your cellular memory, creating lasting transformation.
+                                    Sound healing works cumulatively—each session builds upon the last, deepening your body's capacity for balance and renewal. Regular sessions help anchor the healing frequencies into your cellular memory, creating lasting transformation.
                                 </p>
                                 <p style="margin: 0 0 25px 0; font-size: 15px; color: #666666; line-height: 1.7;">
                                     We recommend booking your next session within 1-2 weeks to maintain momentum and maximize the benefits of frequency therapy.
                                 </p>
+                                <div style="background-color: rgba(255, 255, 255, 0.6); padding: 25px 30px; border-radius: 6px; margin-bottom: 20px;">
+                                    <p style="margin: 0 0 10px 0; font-size: 15px; color: #666666; line-height: 1.7;">
+                                        As a valued client, we'd like to offer you <strong style="color: #007e8c;">10% off your next session</strong> when you book within the next 30 days.
+                                    </p>
+                                    <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7;">
+                                        Simply enter this code <strong style="color: #007e8c;">WELCOME10</strong> when booking your next appointment.
+                                    </p>
+                                </div>
                                 <p style="margin: 0; text-align: center;">
-                                    <a href="https://rejuvenatorsmobilemassage.fieldd.co/" style="display: inline-block; background-color: #007e8c; color: #ffffff; padding: 14px 36px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(0, 126, 140, 0.25);">Book Your Next Session</a>
+                                    <a href="https://rejuvenatorsmobilemassage.fieldd.co/" style="display: inline-block; background-color: #007e8c; color: #ffffff; padding: 14px 36px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(0, 126, 140, 0.25);">Schedule Your Next Session</a>
                                 </p>
                             </div>
                         </td>
@@ -179,11 +195,11 @@
                     <tr>
                         <td style="padding: 0 30px 30px 30px;">
                             <p style="margin: 0; font-size: 15px; color: #666666; line-height: 1.7;">
-                                We trust this session supported your healing journey. If you have questions or would like to discuss your experience, please don't hesitate to reach out.
+                                We trust this session supported your healing journey. If you have questions or would like to schedule your next session, please don't hesitate to reach out.
                             </p>
                             <p style="margin: 20px 0 0 0; font-size: 15px; color: #666666; line-height: 1.7;">
                                 With gratitude,<br>
-                                <strong style="color: #007e8c;">Rejuvenators Mobile Massage & Vibroacoustic Therapy</strong>
+                                <strong style="color: #007e8c;">Your Sound Healing Team</strong>
                             </p>
                         </td>
                     </tr>
@@ -192,11 +208,11 @@
                     <tr>
                         <td style="background-color: #f5f7fa; padding: 25px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
                             <p style="margin: 0; font-size: 13px; color: #999999; line-height: 1.6;">
-                                This email was sent to <strong>{{client_email}}</strong><br>
-                                Questions? Reply to this email
+                                This email was sent to <strong>{{to_email}}</strong><br>
+                                Questions? Reply to this email at {{reply_to}}
                             </p>
                             <p style="margin: 15px 0 0 0; font-size: 12px; color: #bbbbbb;">
-                                © 2025 Rejuvenators Mobile Massage. All rights reserved.
+                                © 2025 Sound Healing Therapy. All rights reserved.
                             </p>
                         </td>
                     </tr>

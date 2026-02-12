@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Vibroacoustic Session – Physical & Emotional Intake (A4)</title>
+<style>
+  :root{
+    --bg:#f6fbfb; --card:#fff; --ink:#1e2a2a; --muted:#5e6b6b; --accent:#008e8c; --accent-2:#6bd6c8;
+    --warn:#c2410c; --ok:#0f766e; --ring:0 0 0 3px rgba(0,142,140,.18); --shadow:0 14px 36px rgba(0,0,0,.08);
+    --radius:16px; --chip:#eef7f6; --chip-b:#d9eeeb;
+  }
+  html,body{height:100%;}
+  body{margin:0;background:#f8faf9;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  header{
+    background:var(--accent); color:#fff; padding:18px 20px; text-align:center; font-weight:700; font-size:clamp(18px,3vw,22px);
+    box-shadow:0 6px 18px rgba(0,0,0,.06);
+  }
+  .wrap{max-width:980px;margin:24px auto 80px;padding:0 16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin:14px 0}
+  .grid{display:grid;gap:12px}
+  @media(min-width:760px){.grid.cols-2{grid-template-columns:1fr 1fr}.grid.cols-3{grid-template-columns:repeat(3,1fr)}}
+  label{font-weight:600;font-size:14px}
+  h2{color:var(--accent);margin:8px 0 10px}
+  .muted{color:var(--muted);font-size:13px}
+  input[type=text],input[type=email],input[type=tel],input[type=date],input[type=time],textarea,select{width:100%;padding:12px;border:1px solid #d8e9e6;border-radius:12px;background:#fbfefd;font-size:14px;transition:.15s}
+  input:focus,textarea:focus,select:focus{outline:none;box-shadow:var(--ring);border-color:var(--accent)}
+  textarea{min-height:84px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .chip{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;background:var(--chip);border:1px solid var(--chip-b);cursor:pointer}
+  .chip input{accent-color:var(--accent)}
+  .scale{display:grid;grid-template-columns:58px 1fr 38px;align-items:center;gap:10px}
+  .scale .out{font-weight:700;color:var(--ok)}
+  input[type=range]{width:100%}
+  .marks{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .badge{padding:4px 8px;border-radius:999px;border:1px solid #d6efe9;background:#ecfaf7;font-size:12px;color:#086b67}
+  .bodymap{display:grid;grid-template-columns:360px 1fr;gap:16px}
+  .svgbox{background:#f7fbfa;border:1px solid #dbeeee;border-radius:14px;position:relative;overflow:hidden}
+  .svgbox svg{display:block;width:100%;height:auto}
+  .btns{display:flex;gap:10px;flex-wrap:wrap}
+  button{padding:12px 16px;border-radius:12px;border:0;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(0,142,140,.25)}
+  button.secondary{background:#e9f6f4;color:#0a6e6a}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#e7f7f4;border:1px solid #d4efea;color:#055a57;font-weight:600;margin-right:6px;margin-top:6px}
+  .list{display:flex;flex-wrap:wrap;gap:8px}
+  .list label{font-weight:500}
+  .foot{font-size:12px;color:var(--muted)}
+  /* Tooltip styles for safety screen */
+  .info{display:inline-flex;justify-content:center;align-items:center;width:18px;height:18px;border-radius:999px;margin-left:6px;background:#e7f7f4;border:1px solid #cfe7e4;color:#0a6e6a;font-weight:800;font-size:12px;cursor:pointer;position:relative;user-select:none}
+  .info .tooltip{display:none;position:absolute;top:22px;left:0;z-index:30;min-width:240px;max-width:320px;padding:10px 12px;background:#fff;border:1px solid #dbeeee;border-radius:12px;box-shadow:var(--shadow);color:#007e8c;font-weight:400;line-height:1.45}
+  .info .tooltip::after{content:"";position:absolute;top:-6px;left:12px;border-width:6px;border-style:solid;border-color:transparent transparent #dbeeee transparent}
+  .info .tooltip::before{content:"";position:absolute;top:-5px;left:12px;border-width:6px;border-style:solid;border-color:transparent transparent #fff transparent}
+  .info:hover .tooltip, .info:focus .tooltip, .info.active .tooltip{display:block}
+  @media print{body{background:#fff}.card{box-shadow:none}.btns{display:none}.wrap{margin:0 auto;padding:0}}
+</style>
+</head>
+<body>
+  <header>Vibroacoustic Session – Physical & Emotional Intake</header>
+  <div class="wrap">
+
+    <!-- Client details -->
+    <section class="card">
+      <h2>Client details</h2>
+      <div class="grid cols-2">
+        <div>
+          <label>Full name</label>
+          <input type="text" placeholder="First & last name"/>
+        </div>
+        <div class="grid cols-3">
+          <div>
+            <label>DOB</label>
+            <input type="date"/>
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="tel" placeholder="Mobile"/>
+          </div>
+          <div>
+            <label>Email</label>
+            <input type="email" placeholder="name@example.com"/>
+          </div>
+        </div>
+        <div class="grid cols-2">
+          <div>
+            <label>Today’s date</label>
+            <input type="date"/>
+          </div>
+          <div>
+            <label>Practitioner</label>
+            <input type="text" placeholder="Practitioner name"/>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1. Primary goals -->
+    <section class="card">
+      <h2>1) Primary goals <span class="muted">(choose 1–2)</span></h2>
+      <div class="chips" role="group" aria-label="Primary goals">
+        <label class="chip"><input type="checkbox" value="pain"> Reduce pain/discomfort (specify area)</label>
+        <label class="chip"><input type="checkbox" value="stress"> Lower stress/anxiety / calm the nervous system</label>
+        <label class="chip"><input type="checkbox" value="sleep"> Improve sleep quality / ease insomnia</label>
+        <label class="chip"><input type="checkbox" value="fibro"> Ease fibromyalgia symptoms (tenderness, fatigue, “fibro-fog”)</label>
+        <label class="chip"><input type="checkbox" value="movement"> Support movement ease (stiffness, tremor, gait difficulty)</label>
+        <label class="chip"><input type="checkbox" value="clarity"> Improve mental clarity/focus</label>
+        <label class="chip"><input type="checkbox" value="relax"> General relaxation / recovery</label>
+      </div>
+    </section>
+
+    <!-- 2. Symptom snapshot -->
+    <section class="card">
+      <h2>2) Symptom snapshot (past 7 days)</h2>
+      <div class="grid cols-2">
+        <div>
+          <label>Pain (0–10)</label>
+          <div class="scale"><span class="muted">0</span><input type="range" min="0" max="10" value="3" id="pain"><output class="out" id="painOut">3</output></div>
+          <div class="marks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div>
+        </div>
+        <div>
+          <label>Stress / Anxiety (0–10)</label>
+          <div class="scale"><span class="muted">0</span><input type="range" min="0" max="10" value="4" id="stress"><output class="out" id="stressOut">4</output></div>
+          <div class="marks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div>
+        </div>
+        <div>
+          <label>Sleep quality (1–5)</label>
+          <div class="scale"><span class="muted">1</span><input type="range" min="1" max="5" value="3" id="sleep"><output class="out" id="sleepOut">3</output></div>
+          <div class="marks"><span>Poor</span><span></span><span>OK</span><span></span><span>Great</span></div>
+        </div>
+      </div>
+
+      <div class="bodymap" style="margin-top:14px">
+        <div class="svgbox">
+          <div class="btns" style="gap:6px;justify-content:flex-end;padding:8px 10px 0 10px">
+            <button class="secondary" id="frontBtn" type="button">Front</button>
+            <button class="secondary" id="backBtn" type="button">Back</button>
+          </div>
+          <!-- Minimalist clinic-style human body (front/back) -->
+          <svg viewBox="0 0 360 760" id="bodySvg" xmlns="http://www.w3.org/2000/svg" aria-label="Tap to mark pain points" style="width:100%;height:auto">
+            <defs>
+              <style>
+                .outline{fill:none;stroke:#99c9c6;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round}
+                .joint{fill:#d9efec;stroke:#bfe3df;stroke-width:1}
+              </style>
+            </defs>
+            <rect x="0" y="0" width="360" height="760" fill="#f7fbfa"/>
+
+            <!-- FRONT silhouette -->
+            <g id="front" class="frontView">
+              <circle class="outline" cx="180" cy="90" r="40"/>
+              <path class="outline" d="M168 130 L192 130 L192 152 Q192 160 180 160 Q168 160 168 152 Z"/>
+              <path class="outline" d="M92 175 Q180 145 268 175"/>
+              <path class="outline" d="M120 180 Q110 230 120 290 Q128 360 180 360 Q232 360 240 290 Q250 230 240 180 Q212 168 180 168 Q148 168 120 180 Z"/>
+              <path class="outline" d="M140 360 Q180 380 220 360 Q230 370 230 388 Q230 408 180 416 Q130 408 130 388 Q130 370 140 360 Z"/>
+              <path class="outline" d="M100 185 Q78 210 72 245 Q64 300 78 340 Q90 372 112 392 Q126 404 132 422"/>
+              <path class="outline" d="M260 185 Q282 210 288 245 Q296 300 282 340 Q270 372 248 392 Q234 404 228 422"/>
+              <ellipse class="outline" cx="136" cy="440" rx="16" ry="10"/>
+              <ellipse class="outline" cx="224" cy="440" rx="16" ry="10"/>
+              <path class="outline" d="M158 418 Q155 468 154 528 Q152 600 152 648 Q152 700 168 720 Q180 734 192 720 Q208 700 208 648 Q208 600 206 528 Q205 468 202 418"/>
+              <circle class="joint" cx="154" cy="528" r="8"/>
+              <circle class="joint" cx="206" cy="528" r="8"/>
+              <path class="outline" d="M134 720 Q152 728 170 728 Q170 744 150 748 Q130 752 120 742 Q118 730 134 720 Z"/>
+              <path class="outline" d="M190 728 Q208 728 226 720 Q242 730 240 742 Q230 752 210 748 Q190 744 190 728 Z"/>
+            </g>
+
+            <!-- BACK silhouette -->
+            <g id="back" class="backView" style="display:none">
+              <circle class="outline" cx="180" cy="90" r="40"/>
+              <path class="outline" d="M168 130 L192 130 L192 152 Q192 160 180 160 Q168 160 168 152 Z"/>
+              <path class="outline" d="M92 175 Q180 155 268 175"/>
+              <path class="outline" d="M120 182 Q110 230 118 290 Q126 352 180 360 Q234 352 242 290 Q250 230 240 182 Q212 170 180 170 Q148 170 120 182 Z"/>
+              <path class="outline" d="M138 360 Q180 382 222 360 Q230 372 230 392 Q230 412 180 420 Q130 412 130 392 Q130 372 138 360 Z"/>
+              <path class="outline" d="M104 186 Q86 214 82 250 Q76 300 92 340 Q106 374 128 398 Q138 410 142 430"/>
+              <path class="outline" d="M256 186 Q274 214 278 250 Q284 300 268 340 Q254 374 232 398 Q222 410 218 430"/>
+              <ellipse class="outline" cx="148" cy="448" rx="16" ry="10"/>
+              <ellipse class="outline" cx="212" cy="448" rx="16" ry="10"/>
+              <path class="outline" d="M160 420 Q158 470 156 532 Q154 600 154 650 Q154 700 170 720 Q180 734 190 720 Q206 700 206 650 Q206 600 204 532 Q202 470 200 420"/>
+              <circle class="joint" cx="156" cy="532" r="8"/>
+              <circle class="joint" cx="204" cy="532" r="8"/>
+              <path class="outline" d="M138 724 Q156 732 172 732 Q172 744 154 748 Q136 752 124 742 Q122 732 138 724 Z"/>
+              <path class="outline" d="M188 732 Q206 732 222 724 Q238 732 236 742 Q224 752 206 748 Q188 744 188 732 Z"/>
+            </g>
+
+            <!-- Marker group -->
+            <g id="markers"></g>
+          </svg>
+        </div>
+        <div>
+          <label>Main pain area(s)</label>
+          <div class="list">
+            <label><input type="checkbox" value="Neck"> Neck</label>
+            <label><input type="checkbox" value="Shoulders"> Shoulders</label>
+            <label><input type="checkbox" value="Upper back"> Upper back</label>
+            <label><input type="checkbox" value="Lower back"> Lower back</label>
+            <label><input type="checkbox" value="Hips"> Hips</label>
+            <label><input type="checkbox" value="Knees"> Knees</label>
+            <label><input type="checkbox" value="Headaches/Migraines"> Headaches/Migraines</label>
+            <label><input type="checkbox" value="Widespread"> Widespread (fibromyalgia)</label>
+            <label><input type="checkbox" value="Other"> Other</label>
+          </div>
+          <div style="margin-top:8px">
+            <label>Pain quality</label>
+            <div class="list">
+              <label><input type="checkbox" value="Achy"> Achy</label>
+              <label><input type="checkbox" value="Sharp"> Sharp</label>
+              <label><input type="checkbox" value="Burning/nerve"> Burning/nerve</label>
+              <label><input type="checkbox" value="Tight/spasm"> Tight/spasm</label>
+              <label><input type="checkbox" value="Fluctuating"> Fluctuating</label>
+            </div>
+          </div>
+          <div class="btns" style="margin-top:10px">
+            <button id="clearPins" class="secondary" type="button">Clear pain markers</button>
+          </div>
+          <div id="pinsOut" class="muted" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Relevant health history -->
+    <section class="card">
+      <h2>3) Relevant health history <span class="muted">(tick all that apply)</span></h2>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" value="Fibromyalgia"> Fibromyalgia diagnosis / widespread tenderness / fatigue</label>
+        <label class="chip"><input type="checkbox" value="Parkinsons"> Parkinson’s (motor symptoms—tremor, stiffness, gait)</label>
+        <label class="chip"><input type="checkbox" value="Chronic pain"> Chronic musculoskeletal pain (back, neck, arthritis, etc.)</label>
+        <label class="chip"><input type="checkbox" value="Migraine"> Migraine/headache</label>
+        <label class="chip"><input type="checkbox" value="Insomnia"> Sleep difficulties / insomnia</label>
+        <label class="chip"><input type="checkbox" value="Anxiety"> High stress / anxiety</label>
+        <label class="chip"><input type="checkbox" value="Sensory"> Sensory regulation difficulties (e.g., autistic traits)</label>
+        <label class="chip"><input type="checkbox" value="Other"> Other condition(s)</label>
+      </div>
+    </section>
+
+    <!-- 4. Safety screen -->
+    <section class="card">
+      <h2>4) Safety screen <span class="muted">(please read carefully)</span></h2>
+      <div class="grid cols-2">
+        <div>
+          <label>Contraindications</label>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" value="Pacemakers/Implants"> Pacemakers/Implants <span class="info" tabindex="0">❕<span class="tooltip">Low‑frequency vibration can interact with pacemakers or implanted neuro‑stimulators. Electrical/magnetic coupling may disrupt sensing or pacing. Discomfort is possible. Always obtain medical clearance prior to VAT.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Deep Vein Thrombosis"> Deep Vein Thrombosis <span class="info" tabindex="0">❕<span class="tooltip">Vibration may increase blood flow and tissue movement, risking clot mobilisation and embolism. VAT should be avoided until DVT is fully treated and medically cleared.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Bleeding Disorders"> Bleeding Disorders <span class="info" tabindex="0">❕<span class="tooltip">Circulatory stimulation from vibration can aggravate bleeding, bruising, or haemorrhage risk. Use only with clinician guidance and clear parameters if deemed appropriate.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Recent Surgery/Open Wounds"> Recent Surgery/Open Wounds <span class="info" tabindex="0">❕<span class="tooltip">Mechanical vibration may disrupt sutures, delay tissue repair, or increase swelling. Postpone VAT until wounds are closed and acute swelling/inflammation has resolved.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Severe Low Blood Pressure"> Severe Low Blood Pressure <span class="info" tabindex="0">❕<span class="tooltip">VAT promotes relaxation which can further lower blood pressure, potentially causing dizziness, syncope, or falls. Monitor closely or defer until stable.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Seizure Disorders"> Seizure Disorders <span class="info" tabindex="0">❕<span class="tooltip">Rhythmic sensory input (auditory/tactile) may, in rare cases, provoke seizures in susceptible individuals. Proceed only with neurologist consent and conservative parameters.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Acute Inflammatory Conditions"> Acute Inflammatory Conditions <span class="info" tabindex="0">❕<span class="tooltip">In acute flare‑ups, added circulation and vibration may intensify heat, swelling, and pain. Wait until the acute phase subsides before resuming VAT.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Psychotic Conditions"> Psychotic Conditions <span class="info" tabindex="0">❕<span class="tooltip">Strong sensory input can increase perceptual confusion or distress in untreated/unstable psychosis. VAT requires clinical stability and appropriate supervision.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Pregnancy"> Pregnancy <span class="info" tabindex="0">❕<span class="tooltip">Safety data during pregnancy are limited. Avoid vibration near abdomen/pelvis to prevent potential uterine stimulation; seek obstetric guidance before use.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="Chemotherapy/Active Cancer"> Chemotherapy and Active Cancer Treatment <span class="info" tabindex="0">❕<span class="tooltip">Vibration‑related circulatory changes may interact with medication effects and fatigue. Only proceed with oncologist approval and carefully titrated sessions.</span></span></label>
+
+            <label class="chip"><input type="checkbox" value="None"> None apply</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Consent & Acknowledgement -->
+    <section class="card">
+      <h2>Consent & Acknowledgement</h2>
+      <p>I understand that Vibroacoustic Therapy involves the use of low-frequency sound and gentle vibration to promote relaxation and balance. I acknowledge and agree that:</p>
+      <ul style="margin:10px 0 16px 20px;line-height:1.6">
+        <li>The session is complementary and non-medical, not intended to diagnose, treat, cure, or prevent disease.</li>
+        <li>The practitioner is not a medical doctor or psychotherapist and makes no guarantees of outcome.</li>
+        <li>I have disclosed all relevant health information to ensure safe use of the Vibroacoustic Bed.</li>
+        <li>I will inform the practitioner immediately of any discomfort, dizziness, or emotional distress.</li>
+        <li>I accept full responsibility for my participation and any responses—physical, mental, or emotional—that may occur.</li>
+        <li>All shared information is confidential, except where disclosure is required by law.</li>
+        <li>I release the practitioner and facility from any liability arising from participation, except where prohibited by law.</li>
+        <li>I confirm I am of sound mind and legal age to give informed consent.</li>
+      </ul>
+      <div class="grid cols-2">
+        <div>
+          <label>Therapist Signature</label>
+          <input type="text" placeholder="Therapist name or signature"/>
+        </div>
+        <div>
+          <label>Date of Signature</label>
+          <input type="date"/>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="card">
+      <div class="btns">
+        <button onclick="window.print()">Print / Save PDF</button>
+        <button class="secondary" id="copySummary">Copy quick summary</button>
+      </div>
+      <p class="foot">This intake supports relaxation-focused vibroacoustic sessions; it is not a diagnostic tool or substitute for medical care.</p>
+      <div id="summary" class="muted" style="margin-top:10px"></div>
+    </section>
+
+  </div>
+
+<script>
+  // Slider outputs
+  const bindSlider=(id,out)=>{const el=document.getElementById(id),oo=document.getElementById(out);const f=()=>oo.textContent=el.value;el.addEventListener('input',f);f();}
+  bindSlider('pain','painOut'); bindSlider('stress','stressOut'); bindSlider('sleep','sleepOut');
+
+  // Body map pins
+  const svg=document.getElementById('bodySvg');
+  const markers=document.getElementById('markers');
+  const pins=[];
+  function addPin(x,y){const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',6);c.setAttribute('fill','#e11d48');c.setAttribute('stroke','#fff');c.setAttribute('stroke-width','1.5');c.style.cursor='pointer';c.addEventListener('click',e=>{e.stopPropagation();markers.removeChild(c);const i=pins.findIndex(p=>p.el===c);if(i>-1) pins.splice(i,1);renderPinsOut();});markers.appendChild(c);pins.push({x,y,el:c});renderPinsOut();}
+  function isInsideSilhouette(x,y){ return (y>40 && y<750 && x>60 && x<300); }
+  svg.addEventListener('click',e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());const x=Math.round(p.x), y=Math.round(p.y); if(!isInsideSilhouette(x,y)) return; addPin(x,y);});
+  document.getElementById('clearPins').addEventListener('click',()=>{while(markers.firstChild) markers.removeChild(markers.firstChild);pins.length=0;renderPinsOut();});
+  function renderPinsOut(){const out=document.getElementById('pinsOut');if(pins.length===0){out.textContent='No pain markers added.';return;} out.textContent='Pain markers: '+pins.map((p,i)=>`#${i+1} (x:${p.x}, y:${p.y})`).join(', ');}
+  renderPinsOut();
+
+  // Toggle front/back views
+  const frontBtn=document.getElementById('frontBtn');
+  const backBtn=document.getElementById('backBtn');
+  const frontG=document.getElementById('front');
+  const backG=document.getElementById('back');
+  function setView(side){ if(side==='front'){frontG.style.display='';backG.style.display='none';frontBtn.style.background='#008e8c';frontBtn.style.color='#fff';backBtn.style.background='#e9f6f4';backBtn.style.color='#0a6e6a';}
+    else {frontG.style.display='none';backG.style.display='';backBtn.style.background='#008e8c';backBtn.style.color='#fff';frontBtn.style.background='#e9f6f4';frontBtn.style.color='#0a6e6a';}}
+  frontBtn.addEventListener('click',()=>setView('front'));
+  backBtn.addEventListener('click',()=>setView('back'));
+  setView('front');
+
+  // Tooltips for touch/click
+  function setupTooltips(){
+    const infos=[...document.querySelectorAll('.info')];
+    function closeAll(){infos.forEach(i=>i.classList.remove('active'));}
+    infos.forEach(i=>{
+      i.addEventListener('click',e=>{e.stopPropagation();const active=i.classList.toggle('active'); if(active){infos.filter(x=>x!==i).forEach(x=>x.classList.remove('active'));}});
+      i.addEventListener('keydown',e=>{if(e.key==='Enter' || e.key===' '){e.preventDefault(); i.click();}});
+    });
+    document.addEventListener('click',closeAll);
+  }
+  setupTooltips();
+
+  // Copy summary
+  document.getElementById('copySummary').addEventListener('click',()=>{
+    const pain=document.getElementById('pain').value, stress=document.getElementById('stress').value, sleep=document.getElementById('sleep').value;
+    const pinTxt=pins.map((p,i)=>`#${i+1}@(${p.x},${p.y})`).join(' ');
+    const txt=`Symptom snapshot → Pain ${pain}/10, Stress ${stress}/10, Sleep ${sleep}/5. Pain markers: ${pinTxt||'none'}.`;
+    navigator.clipboard.writeText(txt).then(()=>{document.getElementById('summary').textContent='Summary copied to clipboard.'}).catch(()=>{document.getElementById('summary').textContent='Copy failed — please select and copy manually.'});
+  });
+</script>
+</body>
+</html>

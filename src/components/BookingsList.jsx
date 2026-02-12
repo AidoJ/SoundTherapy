@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import './BookingList.css';
+import './BookingsList.css';
 
-const BookingList = () => {
+const BookingsList = () => {
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -398,4 +398,4 @@ const BookingList = () => {
   );
 };
 
-export default BookingList;
+export default BookingsList;

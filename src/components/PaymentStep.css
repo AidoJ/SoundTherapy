@@ -1,0 +1,285 @@
+/* Payment Step Container */
+.payment-step {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Payment Method Selection */
+.payment-method-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.payment-option:hover {
+  border-color: #007e8c;
+  background: #f0f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 126, 140, 0.1);
+}
+
+.payment-option.selected {
+  border-color: #007e8c;
+  background: #e7f7f4;
+}
+
+.payment-icon {
+  font-size: 32px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.payment-info {
+  flex: 1;
+}
+
+.payment-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.payment-desc {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Payment Form Container */
+.payment-form-container {
+  margin: 24px 0;
+  padding: 24px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.payment-method-header {
+  margin-bottom: 20px;
+}
+
+.payment-method-header h3 {
+  margin: 8px 0 0 0;
+  color: #007e8c;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #007e8c;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: #005f6b;
+}
+
+/* Payment Amount Display */
+.payment-amount-display {
+  background: linear-gradient(135deg, #007e8c 0%, #00a8ba 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.amount-label {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.amount-value {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+/* Stripe Payment Form */
+.stripe-payment-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.payment-element-container {
+  margin: 20px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.pay-button {
+  width: 100%;
+  margin-top: 20px;
+  font-size: 18px;
+  padding: 16px;
+}
+
+.stripe-badge {
+  text-align: center;
+  margin-top: 16px;
+  opacity: 0.6;
+}
+
+/* Cash Payment Form */
+.cash-payment-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cash-input-group {
+  margin: 20px 0;
+}
+
+.cash-input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.input-with-currency {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  transition: border-color 0.2s;
+}
+
+.input-with-currency:focus-within {
+  border-color: #007e8c;
+}
+
+.currency-symbol {
+  font-size: 20px;
+  font-weight: 600;
+  color: #666;
+}
+
+.currency-code {
+  font-size: 14px;
+  color: #999;
+  font-weight: 600;
+}
+
+.input-with-currency input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  padding: 0;
+}
+
+.input-with-currency input:disabled {
+  background: transparent;
+  color: #999;
+}
+
+.cash-confirmation {
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff3e0;
+  border-radius: 8px;
+  border: 2px solid #ff9800;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #333;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  flex: 1;
+}
+
+.cash-note {
+  margin-top: 16px;
+  padding: 12px;
+  background: #e7f7f4;
+  border-left: 4px solid #007e8c;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* Error and Loading Messages */
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  border-left: 4px solid #c62828;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Step Actions */
+.step-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: space-between;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .payment-form-container {
+    padding: 16px;
+  }
+
+  .payment-option {
+    padding: 16px;
+  }
+
+  .payment-icon {
+    font-size: 28px;
+    min-width: 40px;
+  }
+
+  .payment-name {
+    font-size: 16px;
+  }
+
+  .amount-value {
+    font-size: 28px;
+  }
+}

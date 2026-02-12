@@ -1,0 +1,106 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.audio_files (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  file_url text NOT NULL,
+  file_type text NOT NULL CHECK (file_type = ANY (ARRAY['mp3'::text, 'wav'::text])),
+  duration_seconds integer,
+  file_size_bytes bigint,
+  created_at timestamp with time zone DEFAULT now(),
+  primary_intentions ARRAY,
+  healing_properties ARRAY,
+  harmonic_connections ARRAY,
+  frequency_family text,
+  frequency_min integer,
+  frequency_max integer,
+  file_name text,
+  CONSTRAINT audio_files_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.bookings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  userid character varying NOT NULL,
+  firstname character varying NOT NULL,
+  surname character varying NOT NULL,
+  phone character varying NOT NULL,
+  email character varying NOT NULL,
+  servicetype character varying DEFAULT 'Sound Healing Session'::character varying,
+  duration integer NOT NULL DEFAULT 30,
+  selectedslot timestamp with time zone NOT NULL,
+  paymentmethod character varying DEFAULT 'Stripe'::character varying,
+  paymentstatus character varying DEFAULT 'pending'::character varying,
+  bookingstatus character varying DEFAULT 'pending'::character varying,
+  notes text,
+  createdat timestamp with time zone DEFAULT now(),
+  updatedat timestamp with time zone DEFAULT now(),
+  CONSTRAINT bookings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.clients (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  first_name text NOT NULL,
+  surname text NOT NULL,
+  email text NOT NULL UNIQUE,
+  phone text NOT NULL,
+  date_of_birth date,
+  gender text CHECK (gender = ANY (ARRAY['Male'::text, 'Female'::text, 'Non-binary'::text, 'Prefer not to say'::text, 'Other'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT clients_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.email_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  session_id uuid,
+  email_type text NOT NULL,
+  recipient_email text NOT NULL,
+  subject text,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])),
+  error_message text,
+  sent_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT email_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT email_logs_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id)
+);
+CREATE TABLE public.frequencies (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  frequency_hz integer NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text NOT NULL,
+  benefits jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  chakra text,
+  color text,
+  CONSTRAINT frequencies_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.sessions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  client_id uuid NOT NULL,
+  session_date date NOT NULL,
+  session_time time without time zone NOT NULL,
+  intention jsonb DEFAULT '[]'::jsonb,
+  goal_description text,
+  physical_energy integer CHECK (physical_energy >= 1 AND physical_energy <= 10),
+  emotional_balance integer CHECK (emotional_balance >= 1 AND emotional_balance <= 10),
+  mental_clarity integer CHECK (mental_clarity >= 1 AND mental_clarity <= 10),
+  spiritual_connection integer CHECK (spiritual_connection >= 1 AND spiritual_connection <= 10),
+  selected_frequencies jsonb DEFAULT '[]'::jsonb,
+  health_concerns jsonb DEFAULT '[]'::jsonb,
+  medications text,
+  vibration_intensity text CHECK (vibration_intensity = ANY (ARRAY['gentle'::text, 'moderate'::text, 'deep'::text])),
+  emotional_indicators jsonb DEFAULT '[]'::jsonb,
+  intuitive_messages text,
+  consent_given boolean DEFAULT false,
+  signature text,
+  signature_date date,
+  frequency_suggested integer,
+  notes text,
+  status text DEFAULT 'scheduled'::text CHECK (status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  cancellation_reason text,
+  updated_at timestamp with time zone DEFAULT now(),
+  therapist_notes text,
+  therapist_signature text,
+  CONSTRAINT sessions_pkey PRIMARY KEY (id),
+  CONSTRAINT sessions_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+);

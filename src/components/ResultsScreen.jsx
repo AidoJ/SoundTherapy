@@ -9,7 +9,8 @@ const ResultsScreen = ({ frequency, sessionData, onReset }) => {
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  // Therapist section state
+  // Therapist section state and ref
+  const therapistSectionRef = useRef(null);
   const therapistSignatureCanvasRef = useRef(null);
   const [isDrawingTherapist, setIsDrawingTherapist] = useState(false);
   const [therapistSignatureEmpty, setTherapistSignatureEmpty] = useState(true);
@@ -25,6 +26,24 @@ const ResultsScreen = ({ frequency, sessionData, onReset }) => {
 
     loadFrequencyData();
   }, [frequency]);
+
+  const handleSessionEnd = () => {
+    // Scroll to therapist signature section
+    if (therapistSectionRef.current) {
+      therapistSectionRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+
+      // Highlight the section briefly
+      therapistSectionRef.current.style.boxShadow = '0 0 0 4px #f59e0b';
+      setTimeout(() => {
+        if (therapistSectionRef.current) {
+          therapistSectionRef.current.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+        }
+      }, 2000);
+    }
+  };
 
   // Therapist signature functions
   const startDrawingTherapist = (e) => {
@@ -158,10 +177,14 @@ const ResultsScreen = ({ frequency, sessionData, onReset }) => {
         )}
       </div>
 
-      <AudioPlayer frequency={frequency} />
+      <AudioPlayer
+        frequency={frequency}
+        sessionDuration={sessionData.sessionDuration}
+        onSessionEnd={handleSessionEnd}
+      />
 
       {/* Therapist Section */}
-      <div className="therapist-section" style={{
+      <div ref={therapistSectionRef} className="therapist-section" style={{
         background: '#f0f8ff',
         borderLeft: '4px solid #007e8c',
         padding: '30px',

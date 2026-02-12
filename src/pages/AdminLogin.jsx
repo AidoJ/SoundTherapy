@@ -8,7 +8,8 @@ const AdminLogin = () => {
   const navigate = useNavigate();
 
   // You can change this password or store it in .env
-  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+  // Temporarily hardcoded for access - change this to your preferred password
+  const ADMIN_PASSWORD = 'soundhealing2025';
 
   const handleLogin = (e) => {
     e.preventDefault();

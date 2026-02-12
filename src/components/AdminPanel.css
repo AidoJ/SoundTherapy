@@ -55,6 +55,7 @@
   padding: 12px 24px;
   border: none;
   background: white;
+  color: #007e8c;
   border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
@@ -68,9 +69,29 @@
 }
 
 .admin-tabs button.active {
-  background: var(--gradient);
+  background: #008e8c;
   color: white;
   box-shadow: 0 4px 12px rgba(0, 126, 140, 0.3);
+}
+
+.admin-tabs button:nth-child(1).active {
+  background: #008e8c; /* Teal */
+}
+
+.admin-tabs button:nth-child(2).active {
+  background: #00a3b5; /* Light teal */
+}
+
+.admin-tabs button:nth-child(3).active {
+  background: #9b7fc4; /* Purple */
+}
+
+.admin-tabs button:nth-child(4).active {
+  background: #7e5ba6; /* Dark purple */
+}
+
+.admin-tabs button:nth-child(5).active {
+  background: #0f766e; /* Dark teal */
 }
 
 .admin-content {
@@ -95,7 +116,7 @@
 
 .btn-primary {
   padding: 12px 24px;
-  background: var(--gradient);
+  background: #008e8c;
   color: white;
   border: none;
   border-radius: 8px;
@@ -428,7 +449,7 @@
 .file-upload-label {
   display: inline-block;
   padding: 16px 24px;
-  background: var(--gradient);
+  background: #008e8c;
   color: white;
   border-radius: 8px;
   cursor: pointer;

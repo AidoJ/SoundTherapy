@@ -1,0 +1,724 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../services/supabaseClient';
+import PaymentStep from './PaymentStep';
+import './BookingForm.css';
+
+const BookingForm = ({ onBookingComplete }) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [services, setServices] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const [formData, setFormData] = useState({
+    firstName: '',
+    surname: '',
+    phone: '',
+    email: '',
+    contraindications: [],
+    safetyScreenPassed: false,
+    selectedServiceType: null,
+    selectedService: null,
+    selectedDate: '',
+    selectedTimeSlot: null,
+    paymentMethod: null,
+    paymentStatus: null,
+    amountPaidCents: null,
+    stripePaymentIntentId: null,
+    cashReceived: false
+  });
+
+  // Load available service types on mount
+  useEffect(() => {
+    loadServiceTypes();
+  }, []);
+
+  // Load distinct service types from database
+  const loadServiceTypes = async () => {
+    try {
+      console.log('🔍 Loading available service types...');
+      const { data, error } = await supabase
+        .from('services')
+        .select('service_type')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // Get unique service types
+      const uniqueTypes = [...new Set(data.map(s => s.service_type))].filter(Boolean);
+      console.log('✅ Found service types:', uniqueTypes);
+      setServiceTypes(uniqueTypes);
+    } catch (err) {
+      console.error('❌ Error loading service types:', err);
+    }
+  };
+
+  // Update progress bar (now 7 steps: details, safety, service type, service, datetime, payment, summary)
+  const updateProgress = () => {
+    return (currentStep / 7) * 100;
+  };
+
+  // Load services from database (filtered by service type if selected)
+  const loadServices = async (serviceType = null) => {
+    try {
+      console.log('🔍 Loading services with type filter:', serviceType);
+
+      let query = supabase
+        .from('services')
+        .select('*')
+        .eq('is_active', true);
+
+      // Filter by service type if one is selected
+      if (serviceType) {
+        query = query.eq('service_type', serviceType);
+      }
+
+      const { data, error} = await query.order('display_order');
+
+      if (error) throw error;
+
+      console.log('✅ Services loaded:', data?.length || 0, 'results');
+      console.log('📋 Services data:', data);
+
+      setServices(data || []);
+    } catch (err) {
+      console.error('❌ Error loading services:', err);
+    }
+  };
+
+  // Generate time slots for selected date and check availability
+  const generateTimeSlots = async (selectedDate) => {
+    if (!selectedDate) return;
+
+    try {
+      const now = new Date();
+      const selectedDay = new Date(selectedDate);
+      const isToday = selectedDate === now.toISOString().split('T')[0];
+
+      // Generate all possible slots
+      const allSlots = [];
+      const startHour = isToday ? now.getHours() : 9;
+      const startMinute = isToday ? now.getMinutes() : 0;
+
+      for (let h = startHour; h < 17; h++) {
+        for (let m = 0; m < 60; m += 15) {
+          if (isToday && h === now.getHours() && m <= now.getMinutes()) continue;
+          const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          allSlots.push(timeStr);
+        }
+      }
+
+      // Get existing bookings for this date with duration, filtered by service type
+      // Only block slots for the same service type (PEMF and Vibro Acoustic can run simultaneously)
+      const { data: existingBookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          selectedslot,
+          duration,
+          services!inner (
+            service_type
+          )
+        `)
+        .gte('selectedslot', `${selectedDate}T00:00:00`)
+        .lt('selectedslot', `${selectedDate}T23:59:59`)
+        .eq('services.service_type', formData.selectedServiceType);
+
+      if (error) throw error;
+
+      console.log(`🗓️ Found ${existingBookings?.length || 0} existing ${formData.selectedServiceType} bookings for ${selectedDate}`);
+
+      // Calculate blocked time slots based on booking duration + 5 min buffer
+      const blockedSlots = new Set();
+
+      existingBookings?.forEach(booking => {
+        if (!booking.selectedslot) return;
+
+        // Parse start time
+        const timePart = booking.selectedslot.split('T')[1];
+        if (!timePart) return;
+
+        const [startHours, startMinutes] = timePart.split(':').map(Number);
+        const startTimeInMinutes = startHours * 60 + startMinutes;
+
+        // Calculate end time with 5-minute buffer
+        const durationMinutes = booking.duration || 30; // Default to 30 if not set
+        const bufferMinutes = 5;
+        const endTimeInMinutes = startTimeInMinutes + durationMinutes + bufferMinutes;
+
+        // Block all 15-minute slots that fall within this booking's time range
+        for (let t = startTimeInMinutes; t < endTimeInMinutes; t += 15) {
+          const h = Math.floor(t / 60);
+          const m = t % 60;
+          const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          blockedSlots.add(timeStr);
+        }
+      });
+
+      // Filter out blocked slots
+      const availableSlots = allSlots.map(time => ({
+        time,
+        available: !blockedSlots.has(time)
+      }));
+
+      setTimeSlots(availableSlots);
+    } catch (err) {
+      console.error('Error generating time slots:', err);
+      setTimeSlots([]);
+    }
+  };
+
+  // Safety screen validation
+  const checkSafety = (value) => {
+    if (value === 'None') {
+      setFormData(prev => ({
+        ...prev,
+        contraindications: [],
+        safetyScreenPassed: true
+      }));
+    } else {
+      const updated = [...formData.contraindications];
+      if (updated.includes(value)) {
+        updated.splice(updated.indexOf(value), 1);
+      } else {
+        updated.push(value);
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        contraindications: updated,
+        safetyScreenPassed: updated.length === 0
+      }));
+    }
+  };
+
+  // Step navigation
+  const nextStep = () => {
+    // Validation
+    if (currentStep === 1) {
+      if (!formData.firstName || !formData.surname || !formData.phone || !formData.email) {
+        alert('Please fill in all required fields');
+        return;
+      }
+    }
+
+    if (currentStep === 2 && !formData.safetyScreenPassed) {
+      alert('Please confirm the safety screen');
+      return;
+    }
+
+    if (currentStep === 3 && !formData.selectedServiceType) {
+      alert('Please select a service type');
+      return;
+    }
+
+    if (currentStep === 4 && !formData.selectedService) {
+      alert('Please select a service');
+      return;
+    }
+
+    if (currentStep === 5 && !formData.selectedDate) {
+      alert('Please select a date');
+      return;
+    }
+
+    if (currentStep === 5 && !formData.selectedTimeSlot) {
+      alert('Please select a time slot');
+      return;
+    }
+
+    if (currentStep === 6 && formData.paymentStatus !== 'paid') {
+      alert('Please complete payment before continuing');
+      return;
+    }
+
+    // Load data for next step
+    if (currentStep === 3) {
+      // Load services filtered by selected service type
+      loadServices(formData.selectedServiceType);
+    }
+    if (currentStep === 4 && formData.selectedDate) {
+      generateTimeSlots(formData.selectedDate);
+    }
+
+    setCurrentStep(currentStep + 1);
+    window.scrollTo(0, 0);
+  };
+
+  const prevStep = () => {
+    setCurrentStep(currentStep - 1);
+    window.scrollTo(0, 0);
+  };
+
+  // Confirm booking
+  const confirmBooking = async () => {
+    setLoading(true);
+
+    try {
+      const bookingData = {
+        userid: `guest_${Date.now()}`,
+        firstname: formData.firstName,
+        surname: formData.surname,
+        phone: formData.phone,
+        email: formData.email,
+        service_id: formData.selectedService.id,
+        selectedslot: formData.selectedDate + 'T' + formData.selectedTimeSlot + ':00',
+        duration: formData.selectedService.duration_minutes,
+        paymentmethod: formData.paymentMethod, // 'Stripe' or 'Cash'
+        paymentstatus: formData.paymentStatus, // 'paid'
+        bookingstatus: 'confirmed',
+        price_paid_cents: formData.amountPaidCents, // Actual amount paid
+        stripe_payment_intent_id: formData.stripePaymentIntentId, // Stripe payment ID or null
+        cash_received: formData.cashReceived, // true/false
+        safety_screen_completed: true,
+        contraindications: JSON.stringify(formData.contraindications)
+      };
+
+      console.log('Creating booking with payment data:', bookingData);
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([bookingData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('✅ Booking created successfully:', data);
+      setShowSuccess(true);
+      if (onBookingComplete) onBookingComplete(data);
+
+    } catch (err) {
+      console.error('Error creating booking:', err);
+      alert('Error creating booking. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Render based on current state
+  if (showSuccess) {
+    return (
+      <div className="booking-form-container">
+        <div className="booking-step">
+          <div className="success-banner">
+            <h2>✅ Booking Confirmed!</h2>
+            <p>Your session has been booked successfully.</p>
+          </div>
+
+          <div className="booking-summary">
+            <div className="summary-row">
+              <span>Name:</span>
+              <span>{formData.firstName} {formData.surname}</span>
+            </div>
+            <div className="summary-row">
+              <span>Contact:</span>
+              <span>{formData.phone}</span>
+            </div>
+            <div className="summary-row">
+              <span>Service:</span>
+              <span>{formData.selectedService.service_name}</span>
+            </div>
+            <div className="summary-row">
+              <span>Date:</span>
+              <span>{new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </div>
+            <div className="summary-row">
+              <span>Time:</span>
+              <span>{formData.selectedTimeSlot}</span>
+            </div>
+            <div className="summary-row">
+              <span>Payment:</span>
+              <span style={{color: '#00a854', fontWeight: '600'}}>
+                {formData.paymentMethod === 'Stripe' ? '💳 Card (Paid)' : '💵 Cash (Paid)'}
+              </span>
+            </div>
+            <div className="summary-row total">
+              <span>Amount Paid:</span>
+              <span>${(formData.amountPaidCents / 100).toFixed(2)} AUD</span>
+            </div>
+          </div>
+
+          <div className="info-banner" style={{marginTop: '16px'}}>
+            <strong>📱 What's Next?</strong><br/>
+            • You'll receive an SMS reminder 15 minutes before your session<br/>
+            • Look for the Sound Healing booth at the market<br/>
+            • Your payment has been confirmed - just show up and enjoy your session!<br/>
+            • Arrive 5 minutes early to check in
+          </div>
+
+          <button className="btn-primary" onClick={() => window.location.reload()} style={{marginTop: '20px'}}>
+            Book Another Session
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="booking-form-container">
+      <header className="booking-header">
+        📅 Book Your Sound Healing Session
+      </header>
+
+      {/* Progress bar */}
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: `${updateProgress()}%` }}></div>
+      </div>
+
+      {/* Info banner */}
+      <div className="info-banner">
+        <strong>🎪 Market Session Booking</strong><br/>
+        Book your session today! Pay online with card or pay cash when you arrive. You'll receive SMS & email reminders.
+      </div>
+
+      {/* STEP 1: Client Details */}
+      {currentStep === 1 && (
+        <section className="booking-step">
+          <h2>Step 1: Your Details</h2>
+          <div className="form-grid">
+            <div>
+              <label>First Name <span className="required">*</span></label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                placeholder="First name"
+              />
+            </div>
+            <div>
+              <label>Surname <span className="required">*</span></label>
+              <input
+                type="text"
+                value={formData.surname}
+                onChange={(e) => setFormData({...formData, surname: e.target.value})}
+                placeholder="Surname"
+              />
+            </div>
+            <div>
+              <label>Mobile Phone <span className="required">*</span></label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="04XX XXX XXX"
+              />
+              <span className="field-hint">For session reminders via SMS</span>
+            </div>
+            <div>
+              <label>Email <span className="required">*</span></label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="your@email.com"
+              />
+            </div>
+          </div>
+          <div className="step-actions">
+            <button className="btn-primary" onClick={nextStep}>Continue to Safety Screen →</button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 2: Safety Screen */}
+      {currentStep === 2 && (
+        <section className="booking-step">
+          <h2>Step 2: Safety Screen</h2>
+          <p className="step-description">Please confirm you do not have any contraindications. This ensures your safety during the session.</p>
+
+          <div className="contraindications-list">
+            {['Pacemakers/Implants', 'Deep Vein Thrombosis', 'Bleeding Disorders', 'Recent Surgery',
+              'Severe Low Blood Pressure', 'Seizure Disorders', 'Acute Inflammation', 'Pregnancy',
+              'Active Cancer Treatment'].map(item => (
+              <label key={item} className="chip">
+                <input
+                  type="checkbox"
+                  checked={formData.contraindications.includes(item)}
+                  onChange={() => checkSafety(item)}
+                />
+                <strong>{item}</strong>
+              </label>
+            ))}
+          </div>
+
+          <div className="none-apply-box">
+            <label className="chip chip-primary">
+              <input
+                type="checkbox"
+                checked={formData.safetyScreenPassed}
+                onChange={() => checkSafety('None')}
+              />
+              ✓ None of the above apply to me
+            </label>
+          </div>
+
+          {formData.contraindications.length > 0 && (
+            <div className="error-banner">
+              <strong>⚠️ Session Not Suitable</strong><br/>
+              Based on your responses, vibroacoustic therapy may not be suitable. Please consult your healthcare provider.
+            </div>
+          )}
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={nextStep}
+              disabled={!formData.safetyScreenPassed}
+            >
+              Continue to Select Type →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 3: Select Service Type */}
+      {currentStep === 3 && (
+        <section className="booking-step">
+          <h2>Step 3: Choose Service Type</h2>
+          <p className="step-description">Select the type of therapy you're interested in</p>
+
+          <div className="services-grid">
+            {serviceTypes.length === 0 ? (
+              <p style={{gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)'}}>
+                Loading service types...
+              </p>
+            ) : (
+              serviceTypes.map((serviceType) => {
+                // Get appropriate icon based on service type name
+                const getIcon = (type) => {
+                  const lower = type.toLowerCase();
+                  if (lower.includes('vibro') || lower.includes('acoustic') || lower.includes('sound')) return '🎵';
+                  if (lower.includes('pemf') || lower.includes('magnetic')) return '⚡';
+                  if (lower.includes('light') || lower.includes('photo')) return '💡';
+                  if (lower.includes('laser')) return '🔦';
+                  if (lower.includes('massage')) return '💆';
+                  if (lower.includes('heat') || lower.includes('thermal')) return '🔥';
+                  if (lower.includes('cold') || lower.includes('cryo')) return '❄️';
+                  return '✨';
+                };
+
+                return (
+                  <div
+                    key={serviceType}
+                    className={`service-card ${formData.selectedServiceType === serviceType ? 'selected' : ''}`}
+                    onClick={() => setFormData({...formData, selectedServiceType: serviceType, selectedService: null})}
+                  >
+                    <div className="service-header">
+                      <div>
+                        <span className="service-icon">{getIcon(serviceType)}</span>
+                        <span className="service-name">{serviceType}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={nextStep}
+              disabled={!formData.selectedServiceType}
+            >
+              Continue to Select Session →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 4: Select Service */}
+      {currentStep === 4 && (
+        <section className="booking-step">
+          <h2>Step 4: Choose Your Session</h2>
+          <p className="step-description">Select the duration that suits your needs</p>
+
+          <div className="services-grid">
+            {services.map(service => (
+              <div
+                key={service.id}
+                className={`service-card ${formData.selectedService?.id === service.id ? 'selected' : ''}`}
+                onClick={() => setFormData({...formData, selectedService: service})}
+              >
+                <div className="service-header">
+                  <div>
+                    <span className="service-icon">{service.icon_emoji || '🎵'}</span>
+                    <span className="service-name">{service.service_name}</span>
+                  </div>
+                  <div className="service-price">${(service.price_cents / 100).toFixed(2)}</div>
+                </div>
+                <div className="service-duration">{service.duration_minutes} minutes</div>
+                <div className="service-desc">{service.description}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={nextStep}
+              disabled={!formData.selectedService}
+            >
+              Continue to Select Time →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 5: Select Date & Time */}
+      {currentStep === 5 && (
+        <section className="booking-step">
+          <h2>Step 5: Select Date & Time</h2>
+          <p className="step-description">Choose your preferred date and time</p>
+
+          <div className="form-grid">
+            <div>
+              <label>Select Date <span className="required">*</span></label>
+              <input
+                type="date"
+                value={formData.selectedDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setFormData({...formData, selectedDate: e.target.value, selectedTimeSlot: null});
+                  generateTimeSlots(e.target.value);
+                }}
+                style={{marginBottom: '20px'}}
+              />
+            </div>
+          </div>
+
+          {formData.selectedDate && (
+            <>
+              <p className="step-description">Available time slots for {new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <div className="time-slots-grid">
+                {timeSlots.length === 0 ? (
+                  <p style={{gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)'}}>No available time slots for this date</p>
+                ) : (
+                  timeSlots.map((slot, idx) => (
+                    <div
+                      key={idx}
+                      className={`time-slot ${formData.selectedTimeSlot === slot.time ? 'selected' : ''} ${!slot.available ? 'unavailable' : ''}`}
+                      onClick={() => slot.available && setFormData({...formData, selectedTimeSlot: slot.time})}
+                      title={!slot.available ? 'This time slot is already booked' : ''}
+                    >
+                      {slot.time}
+                      {!slot.available && <span style={{display: 'block', fontSize: '10px'}}>Booked</span>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={nextStep}
+              disabled={!formData.selectedDate || !formData.selectedTimeSlot}
+            >
+              Continue to Payment →
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* STEP 6: Payment Method */}
+      {currentStep === 6 && (
+        <section className="booking-step">
+          <PaymentStep
+            service={formData.selectedService}
+            customerEmail={formData.email}
+            onPaymentSuccess={(paymentData) => {
+              // Update form data with payment information
+              setFormData({
+                ...formData,
+                paymentMethod: paymentData.method,
+                paymentStatus: paymentData.status,
+                amountPaidCents: paymentData.amountPaidCents,
+                stripePaymentIntentId: paymentData.stripePaymentIntentId,
+                cashReceived: paymentData.cashReceived
+              });
+              // Automatically advance to summary step
+              setCurrentStep(7);
+            }}
+            onBack={prevStep}
+          />
+        </section>
+      )}
+
+      {/* STEP 7: Booking Summary */}
+      {currentStep === 7 && (
+        <section className="booking-step">
+          <h2>Booking Summary</h2>
+
+          <div className="booking-summary">
+            <div className="summary-row">
+              <span>Name:</span>
+              <span>{formData.firstName} {formData.surname}</span>
+            </div>
+            <div className="summary-row">
+              <span>Contact:</span>
+              <span>{formData.phone}</span>
+            </div>
+            <div className="summary-row">
+              <span>Service:</span>
+              <span>{formData.selectedService?.service_name} ({formData.selectedService?.duration_minutes} min)</span>
+            </div>
+            <div className="summary-row">
+              <span>Date:</span>
+              <span>{new Date(formData.selectedDate).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </div>
+            <div className="summary-row">
+              <span>Time:</span>
+              <span>{formData.selectedTimeSlot}</span>
+            </div>
+            <div className="summary-row">
+              <span>Payment Method:</span>
+              <span>{formData.paymentMethod === 'Stripe' ? '💳 Card Payment' : '💵 Cash Payment'}</span>
+            </div>
+            <div className="summary-row">
+              <span>Payment Status:</span>
+              <span style={{color: '#00a854', fontWeight: '600'}}>✅ Paid</span>
+            </div>
+            <div className="summary-row total">
+              <span>Amount Paid:</span>
+              <span>${(formData.amountPaidCents / 100).toFixed(2)} AUD</span>
+            </div>
+          </div>
+
+          {formData.paymentMethod === 'Cash' && formData.cashReceived && (
+            <div className="success-banner" style={{marginTop: '16px'}}>
+              <strong>✅ Cash Payment Received</strong><br/>
+              Cash payment of ${(formData.amountPaidCents / 100).toFixed(2)} has been confirmed. Your booking is secured!
+            </div>
+          )}
+
+          {formData.paymentMethod === 'Stripe' && (
+            <div className="success-banner" style={{marginTop: '16px'}}>
+              <strong>✅ Card Payment Successful</strong><br/>
+              Your payment has been processed securely. Confirmation email sent to {formData.email}
+            </div>
+          )}
+
+          <div className="step-actions">
+            <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            <button
+              className="btn-primary"
+              onClick={confirmBooking}
+              disabled={loading}
+            >
+              {loading ? 'Confirming Booking...' : 'Confirm & Complete Booking ✓'}
+            </button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+export default BookingForm;

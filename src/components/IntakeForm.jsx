@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../services/supabaseClient';
 import { contraindicationInfo } from '../utils/contraindicationInfo';
 import './IntakeForm.css';
 
-const IntakeForm = ({ onSubmit, bookingData }) => {
+const IntakeForm = ({ onSubmit, bookingData, walkInMode = false }) => {
+  const [loadingBooking, setLoadingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
+  const [currentBookingId, setCurrentBookingId] = useState(null);
+  const [bookingDuration, setBookingDuration] = useState(null);
   const [formData, setFormData] = useState({
     // Client Details
     fullName: '',
@@ -26,6 +31,9 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     // Safety Screen
     healthConcerns: [],
 
+    // Session Duration (for walk-in mode)
+    sessionDuration: null,
+
     // Consent
     consentGiven: false,
     therapistSignature: '',
@@ -45,7 +53,88 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     calculateProgress();
   }, [formData]);
 
-  // Auto-populate from booking data
+  // Load booking data from URL parameter
+  useEffect(() => {
+    const loadBookingFromUrl = async () => {
+      // Skip booking lookup for walk-in sessions
+      if (walkInMode) {
+        console.log('Walk-in mode: Skipping booking lookup');
+        return;
+      }
+
+      // Check for bookingId in URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const bookingId = urlParams.get('bookingId');
+
+      if (bookingId) {
+        try {
+          setLoadingBooking(true);
+          setBookingError(null);
+          setCurrentBookingId(bookingId);
+
+          // Fetch booking data with service duration
+          const { data: booking, error: fetchError } = await supabase
+            .from('bookings')
+            .select(`
+              *,
+              services (
+                duration_minutes
+              )
+            `)
+            .eq('id', bookingId)
+            .single();
+
+          if (fetchError) throw fetchError;
+
+          if (booking) {
+            // Store booking duration
+            setBookingDuration(booking.services?.duration_minutes || null);
+            // Parse contraindications from JSON string
+            let contraindications = [];
+            try {
+              contraindications = typeof booking.contraindications === 'string'
+                ? JSON.parse(booking.contraindications)
+                : booking.contraindications || [];
+            } catch (e) {
+              console.error('Error parsing contraindications:', e);
+              contraindications = [];
+            }
+
+            // Auto-fill form from booking data
+            setFormData(prev => ({
+              ...prev,
+              fullName: `${booking.firstname} ${booking.surname}`,
+              phone: booking.phone,
+              email: booking.email,
+              healthConcerns: contraindications.length > 0 ? contraindications : ['none']
+            }));
+
+            // Mark booking as in-progress
+            const { error: updateError } = await supabase
+              .from('bookings')
+              .update({
+                bookingstatus: 'in-progress',
+                startedat: new Date().toISOString()
+              })
+              .eq('id', bookingId);
+
+            if (updateError) {
+              console.error('Error updating booking status:', updateError);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading booking:', err);
+          setBookingError(err.message);
+        } finally {
+          setLoadingBooking(false);
+        }
+      }
+    };
+
+    loadBookingFromUrl();
+  }, []);
+
+  // Auto-populate from booking data prop (legacy support)
   useEffect(() => {
     if (bookingData) {
       setFormData(prev => ({
@@ -58,15 +147,19 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
   }, [bookingData]);
 
   const calculateProgress = () => {
-    const requiredFields = [
-      formData.fullName,
-      formData.email,
-      formData.phone,
-      formData.primaryGoals.length > 0,
-      formData.healthConcerns.length > 0,
-      formData.consentGiven,
-      formData.therapistSignature
-    ];
+    const requiredFields = walkInMode
+      ? [
+          formData.fullName,
+          formData.email
+        ]
+      : [
+          formData.fullName,
+          formData.email,
+          formData.phone,
+          formData.primaryGoals.length > 0,
+          formData.consentGiven,
+          formData.therapistSignature
+        ];
 
     const filled = requiredFields.filter(Boolean).length;
     const percent = (filled / requiredFields.length) * 100;
@@ -192,43 +285,54 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
-    if (formData.primaryGoals.length === 0) {
-      alert('Please select at least one primary goal');
-      return;
-    }
+    // Validation (skip primary goals, consent, and signature for walk-in mode)
+    if (!walkInMode) {
+      if (formData.primaryGoals.length === 0) {
+        alert('Please select at least one primary goal');
+        return;
+      }
 
-    // Health concerns validation - now required
-    if (formData.healthConcerns.length === 0) {
-      alert('Please complete the Safety Screen section');
-      return;
-    }
+      if (!formData.consentGiven) {
+        alert('Please provide consent to continue');
+        return;
+      }
 
-    // Contraindication check
-    const hasContraindications = formData.healthConcerns.some(concern => concern !== 'none');
-    if (hasContraindications) {
-      const confirmed = window.confirm(
-        'Unfortunately you have checked an existing condition that has a contra-indication, we can not proceed with this treatment unless you have a consent form from your GP or attending Physician. Understood?'
-      );
-      if (!confirmed) {
+      if (!formData.therapistSignature) {
+        alert('Please provide therapist signature');
         return;
       }
     }
 
-    if (!formData.consentGiven) {
-      alert('Please provide consent to continue');
-      return;
+    // If this session came from a booking, mark it as completed
+    if (currentBookingId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({
+            bookingstatus: 'completed',
+            completedat: new Date().toISOString()
+          })
+          .eq('id', currentBookingId);
+
+        if (updateError) {
+          console.error('Error marking booking as completed:', updateError);
+        }
+      } catch (err) {
+        console.error('Error updating booking:', err);
+      }
     }
 
-    if (!formData.therapistSignature) {
-      alert('Please provide therapist signature');
-      return;
-    }
+    // Include session duration in submitted data
+    // Use formData.sessionDuration (from walk-in selector) if set, otherwise use bookingDuration (from database)
+    const submittedData = {
+      ...formData,
+      sessionDuration: formData.sessionDuration || bookingDuration
+    };
 
-    onSubmit(formData);
+    onSubmit(submittedData);
   };
 
   return (
@@ -237,6 +341,24 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
         <h2>Vibroacoustic Session – Physical & Emotional Intake</h2>
         <p>Help us understand your needs for optimal therapy</p>
       </div>
+
+      {loadingBooking && (
+        <div className="info-banner">
+          ⏳ Loading booking information...
+        </div>
+      )}
+
+      {bookingError && (
+        <div className="error-banner">
+          ❌ Error loading booking: {bookingError}
+        </div>
+      )}
+
+      {currentBookingId && !loadingBooking && (
+        <div className="success-banner">
+          ✅ Booking loaded successfully. Client details have been auto-filled.
+        </div>
+      )}
 
       <div className="progress-bar">
         <div className="progress-fill" style={{ width: `${progress}%` }}></div>
@@ -259,6 +381,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 required
               />
             </div>
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="dateOfBirth">Date of Birth</label>
               <input
@@ -269,8 +392,10 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 onChange={handleInputChange}
               />
             </div>
+            )}
           </div>
           <div className="form-grid cols-2">
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="phone">Phone *</label>
               <input
@@ -282,6 +407,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 required
               />
             </div>
+            )}
             <div className="form-group">
               <label htmlFor="email">Email *</label>
               <input
@@ -305,6 +431,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 onChange={handleInputChange}
               />
             </div>
+            {!walkInMode && (
             <div className="form-group">
               <label htmlFor="practitioner">Practitioner</label>
               <input
@@ -315,10 +442,53 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 onChange={handleInputChange}
               />
             </div>
+            )}
           </div>
         </section>
 
-        {/* Primary Goals */}
+        {/* Session Duration (Walk-In Mode Only) */}
+        {walkInMode && (
+          <section className="form-card">
+            <h3>⏱ Session Duration</h3>
+            <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
+              Set the duration for this walk-in session, or leave blank for manual control.
+            </p>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px'}}>
+              {[
+                { value: null, label: 'Manual Control' },
+                { value: 15, label: '15 minutes' },
+                { value: 20, label: '20 minutes' },
+                { value: 30, label: '30 minutes' },
+                { value: 45, label: '45 minutes' },
+                { value: 60, label: '60 minutes' }
+              ].map(option => (
+                <label
+                  key={option.value || 'manual'}
+                  className="chip"
+                  style={{
+                    cursor: 'pointer',
+                    backgroundColor: formData.sessionDuration === option.value ? '#007e8c' : '#f0f0f0',
+                    color: formData.sessionDuration === option.value ? '#fff' : '#333',
+                    border: formData.sessionDuration === option.value ? '2px solid #007e8c' : '2px solid #e0e0e0'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="sessionDuration"
+                    value={option.value || ''}
+                    checked={formData.sessionDuration === option.value}
+                    onChange={() => setFormData({...formData, sessionDuration: option.value})}
+                    style={{display: 'none'}}
+                  />
+                  <strong>{option.label}</strong>
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Primary Goals (hidden in walk-in mode) */}
+        {!walkInMode && (
         <section className="form-card">
           <h3>2. Primary Goals</h3>
           <div className="chips">
@@ -342,10 +512,11 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
             ))}
           </div>
         </section>
+        )}
 
         {/* Symptom Snapshot */}
         <section className="form-card">
-          <h3>3. Symptom Snapshot (past 7 days)</h3>
+          <h3>{walkInMode ? '2' : '3'}. Symptom Snapshot (past 7 days)</h3>
           <div className="energy-grid">
             <div className="energy-row">
               <label>Pain Level</label>
@@ -394,27 +565,29 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
             </div>
           </div>
           <div style={{ marginTop: '24px' }}>
+            {/* Body map with pain markers (hidden in walk-in mode) */}
+            {!walkInMode && (
             <div className="bodymap">
               <div className="svgbox">
                 <div className="btns" style={{ gap: '6px', justifyContent: 'flex-end', padding: '8px 10px 0 10px' }}>
-                  <button 
-                    className="secondary" 
-                    id="frontBtn" 
+                  <button
+                    className="secondary"
+                    id="frontBtn"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, bodyView: 'front' }))}
-                    style={{ 
+                    style={{
                       background: formData.bodyView === 'front' ? '#008e8c' : '#e9f6f4',
                       color: formData.bodyView === 'front' ? '#fff' : '#0a6e6a'
                     }}
                   >
                     Front
                   </button>
-                  <button 
-                    className="secondary" 
-                    id="backBtn" 
+                  <button
+                    className="secondary"
+                    id="backBtn"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, bodyView: 'back' }))}
-                    style={{ 
+                    style={{
                       background: formData.bodyView === 'back' ? '#008e8c' : '#e9f6f4',
                       color: formData.bodyView === 'back' ? '#fff' : '#0a6e6a'
                     }}
@@ -422,11 +595,11 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                     Back
                   </button>
                 </div>
-                <svg 
-                  viewBox="0 0 360 760" 
-                  id="bodySvg" 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  aria-label="Tap to mark pain points" 
+                <svg
+                  viewBox="0 0 360 760"
+                  id="bodySvg"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-label="Tap to mark pain points"
                   style={{ width: '100%', height: 'auto' }}
                   onClick={handleBodyClick}
                 >
@@ -498,6 +671,8 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                   </g>
                 </svg>
               </div>
+            </div>
+            )}
               <div>
                 <label>Main Pain Areas</label>
                 <div className="chips">
@@ -520,9 +695,11 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
               </label>
             ))}
                 </div>
+                {!walkInMode && (
+                <>
                 <div className="btns" style={{ marginTop: '10px' }}>
-                  <button 
-                    className="secondary" 
+                  <button
+                    className="secondary"
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, painMarkers: [] }))}
                   >
@@ -530,19 +707,27 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                   </button>
                 </div>
                 <div className="muted" style={{ marginTop: '8px' }}>
-                  {formData.painMarkers.length === 0 
-                    ? 'No pain markers added.' 
+                  {formData.painMarkers.length === 0
+                    ? 'No pain markers added.'
                     : `Pain markers: ${formData.painMarkers.map((p, i) => `#${i+1} (x:${p.x}, y:${p.y})`).join(', ')}`
                   }
                 </div>
+                </>
+                )}
               </div>
-            </div>
           </div>
         </section>
 
-        {/* Safety Screen */}
-        <section className="form-card">
-          <h3>4. Safety Screen <span style={{color: 'red'}}>*</span></h3>
+        {/* Safety Screen (hidden in walk-in mode) */}
+        {!walkInMode && (
+        <section className="form-card" style={{opacity: 0.5, pointerEvents: 'none', position: 'relative'}}>
+            <div style={{position: 'absolute', top: '10px', right: '10px', background: '#e0e0e0', padding: '4px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#666'}}>
+              Information Only
+            </div>
+          <h3>4. Safety Screen</h3>
+          <p style={{fontSize: '14px', color: '#666', marginBottom: '16px'}}>
+              This section is for reference. Contraindications are recorded at time of booking.
+          </p>
           <div className="chips">
             {[
               { value: 'pacemaker', label: 'Pacemakers/Implants' },
@@ -561,7 +746,8 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
                 <input
                   type="checkbox"
                   checked={formData.healthConcerns.includes(concern.value)}
-                  onChange={() => handleCheckboxGroup('healthConcerns', concern.value)}
+                  disabled
+                  onChange={() => {}}
                 />
                 <strong>{concern.label}</strong>
                 {concern.value !== 'none' && (
@@ -573,8 +759,10 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
             ))}
           </div>
         </section>
+        )}
 
-        {/* Consent & Acknowledgement */}
+        {/* Consent & Acknowledgement (hidden in walk-in mode) */}
+        {!walkInMode && (
         <section className="form-card">
           <h3>5. Consent & Acknowledgement</h3>
           <div className="consent-notice">
@@ -605,7 +793,7 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
           </div>
           <div className="form-grid cols-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
-              <label htmlFor="therapistSignature">Therapist Signature *</label>
+              <label htmlFor="therapistSignature">Client Signature *</label>
               <div className="signature-pad">
                 <canvas
                   ref={therapistSignatureCanvasRef}
@@ -650,9 +838,13 @@ const IntakeForm = ({ onSubmit, bookingData }) => {
             </div>
           </div>
         </section>
+        )}
 
         <div className="form-navigation">
-          <button type="submit" className="btn btn-primary">
+          <button
+            type="submit"
+            className="btn btn-primary"
+          >
             Submit Intake Form
           </button>
         </div>
